@@ -251,37 +251,43 @@ analyzer.hyperparameter_sensitivity_study(
 
 ### 5. Examples to Create
 
-**Tutorial 1: Getting Started** (30 min)
+**Priority: Fixed-Time Examples First**
+
+**Tutorial 1: Getting Started with Fixed-Time Training** (30 min) ✅
 ```python
 # examples/01_basic_cz_gate.py
-"""Basic CZ gate optimization with visualization."""
+"""Basic CZ gate optimization with fixed gate time."""
 from qneural import CZPhiGate, QuantumTrainer
 from qneural.analysis import TrainingVisualizer
 
-# Train
+# Train with fixed gate time
 trainer = QuantumTrainer(...)
-history = trainer.train(angles, gate_time, epochs=200)
+history = trainer.train(angles, gate_time=7.0, epochs=200)
 
 # Visualize
 viz = TrainingVisualizer()
 viz.plot_loss_convergence(history)
-viz.plot_gate_time_vs_angle(trainer, angles)
+viz.plot_fidelity_vs_angle(trainer, angles)  # Works with fixed-time
 ```
 
-**Tutorial 2: Multi-Angle Training** (45 min)
-- Training on angle families
+**Tutorial 2: Multi-Angle Training & Analysis** (45 min) ✅
+- Training on angle families (fixed-time)
 - 3D pulse visualization
 - Fidelity landscape analysis
+- Works with current fixed-time implementation
 
-**Tutorial 3: Time-Optimal Control** (60 min)
-- Variable gate time optimization
-- Time vs infidelity tradeoff
-- Advanced verification
-
-**Tutorial 4: Analysis & Reporting** (45 min)
+**Tutorial 3: Advanced Analysis & Reporting** (45 min) ✅
 - Loading saved models
 - Comparative analysis
 - Generating publication-ready figures
+- Statistical analysis
+
+**Tutorial 4: Time-Optimal Control** (60 min) ⏳
+- **Requires**: Time-optimal NN chaining implementation
+- Variable gate time optimization
+- Time vs infidelity tradeoff
+- `plot_gate_time_vs_angle()` visualization
+- Advanced verification
 
 ---
 
@@ -301,31 +307,41 @@ viz.plot_gate_time_vs_angle(trainer, angles)
 
 ## Implementation Checklist
 
-### Phase 1: Core Visualizations
-- [ ] `plot_loss_convergence()` - Basic training curves
-- [ ] `plot_gate_time_vs_angle()` - Scatter plots
-- [ ] `plot_pulses_vs_time()` - Time series
+**Legend:**
+- ✅ = Works with fixed-time training (current)
+- ⏳ = Requires time-optimal training (needs NN chaining)
 
-### Phase 2: Advanced Plots
-- [ ] `plot_pulse_3d_surface()` - 3D visualization
-- [ ] `plot_fidelity_landscape()` - Heatmaps
-- [ ] `plot_pulse_comparison()` - Multi-model
+### Phase 1: Core Visualizations (Fixed-Time) ✅
+- [ ] `plot_loss_convergence()` - Basic training curves ✅
+- [ ] `plot_pulses_vs_time()` - Time series ✅
+- [ ] `plot_fidelity_vs_angle()` - Fidelity curves ✅
 
-### Phase 3: Analysis Tools
-- [ ] `FidelityAnalyzer` class
-- [ ] Curve fitting utilities
-- [ ] QuTiP verification integration
+### Phase 2: Time-Optimal Specific ⏳
+- [ ] `plot_gate_time_vs_angle()` - Scatter plots ⏳
+- [ ] `fit_gate_time_model()` - Curve fitting ⏳
+- [ ] Time vs infidelity tradeoff analysis ⏳
 
-### Phase 4: Reporting
-- [ ] HTML report generator
-- [ ] ASCII table generator
-- [ ] Automated summary statistics
+### Phase 3: Advanced Plots (Both)
+- [ ] `plot_pulse_3d_surface()` - 3D visualization ✅
+- [ ] `plot_fidelity_landscape()` - Heatmaps ✅
+- [ ] `plot_pulse_comparison()` - Multi-model ✅
 
-### Phase 5: Examples
-- [ ] 01_basic_cz_gate.py
-- [ ] 02_multi_angle_training.py
-- [ ] 03_time_optimal_control.py
-- [ ] Tutorial notebooks
+### Phase 4: Analysis Tools (Both)
+- [ ] `FidelityAnalyzer` class ✅
+- [ ] QuTiP verification integration ✅
+- [ ] Statistical analysis (bootstrap, confidence intervals) ✅
+
+### Phase 5: Reporting (Both)
+- [ ] HTML report generator ✅
+- [ ] ASCII table generator ✅
+- [ ] Automated summary statistics ✅
+
+### Phase 6: Examples
+- [ ] 01_basic_cz_gate.py (fixed-time) ✅
+- [ ] 02_multi_angle_training.py (fixed-time) ✅
+- [ ] 03_time_optimal_control.py (time-optimal) ⏳
+- [ ] 04_analysis_and_reporting.py (both) ✅
+- [ ] Tutorial notebooks (focus on fixed-time first) ✅
 
 ---
 

@@ -6,7 +6,7 @@ A flexible, modular framework for optimizing quantum control protocols using mac
 
 ## Overview
 
-`qneural` provides a platform-agnostic toolkit for quantum control optimization. While initially developed for neural network-based pulse optimization on Rydberg atom systems (demonstrating state-of-the-art results for parametrized multi-qubit gates), the framework is designed to support:
+`qneural` provides a platform-agnostic toolkit for quantum control optimization. This library was developed during PhD research at Eindhoven University of Technology and is now being open-sourced and extended. While initially developed for neural network-based pulse optimization on Rydberg atom systems (demonstrating state-of-the-art results for parametrized multi-qubit gates), the framework is designed to support:
 
 - **Multiple quantum hardware platforms**: Rydberg atoms, superconducting qubits, trapped ions, etc.
 - **Various ML approaches**: Neural networks (current), reinforcement learning (planned), gradient-free optimization (planned)
@@ -15,15 +15,22 @@ A flexible, modular framework for optimizing quantum control protocols using mac
 
 ## Key Features
 
-### Current Capabilities
+### Current Capabilities (Fixed-Time Training) ✅
 - ✅ **Rydberg atom Hamiltonians**: Full support for ground-Rydberg and ground-ground qubit encodings
-- ✅ **Neural network pulse optimization**: Parametrized gate generation with time-optimal solutions
+- ✅ **Fixed-time neural network optimization**: Parametrized gate generation for fixed gate durations
 - ✅ **2-qubit and 3-qubit gates**: CZ_φ and CCZ_φ implementations with published results
 - ✅ **Differentiable ODE solvers**: Time-evolution with automatic differentiation (torchdiffeq)
 - ✅ **Comprehensive metrics**: Fidelity, infidelity, gate analysis tools
-- ✅ **Flexible pulse parametrization**: Multi-step pulses, variable gate times, adaptive discretization
+- ✅ **Flexible pulse parametrization**: Multi-step pulses, adaptive discretization
+
+### In Progress 🔄
+- 🔄 **Time-optimal training**: Variable gate time optimization (infrastructure present, NN chaining needs completion)
+- 🔄 **Visualization tools**: Centralized plotting and analysis module
+- 🔄 **Checkpoint system**: Save/resume training functionality
 
 ### Planned Extensions
+- 🔄 **Visualization & analysis**: Comprehensive plotting tools for training analysis
+- 🔄 **Checkpoint system**: Auto-save and resume training
 - 🔄 **JAX backend**: For improved performance and XLA compilation
 - 🔄 **Additional hardware platforms**: Superconducting qubits, trapped ions
 - 🔄 **Reinforcement learning**: Model-free optimization approaches
@@ -134,14 +141,35 @@ The `research/` directory contains the original research notebooks used to devel
 
 ## Citation
 
-If you use qneural in your research, please cite:
+If you use qneural in your research, please cite our publication:
 
+**Reference Publication:**
+```bibtex
+@article{PhysRevApplied.23.054074,
+  title = {Parametrized multiqubit gates for neutral-atom quantum platforms},
+  author = {Mohan, Madhav and de Hond, Julius and Kokkelmans, Servaas},
+  journal = {Phys. Rev. Appl.},
+  volume = {23},
+  issue = {5},
+  pages = {054074},
+  numpages = {12},
+  year = {2025},
+  month = {May},
+  publisher = {American Physical Society},
+  doi = {10.1103/PhysRevApplied.23.054074},
+  url = {https://link.aps.org/doi/10.1103/PhysRevApplied.23.054074}
+}
+```
+
+This paper demonstrates state-of-the-art results for parametrized multi-qubit gates achieved using the methods implemented in this library.
+
+**Software:**
 ```bibtex
 @software{qneural2024,
   title = {qneural: Machine Learning for Quantum Control},
   author = {Mohan, Madhav and de Hond, Julius},
   year = {2024},
-  url = {https://github.com/yourusername/qneural}
+  url = {https://github.com/quantockhills/qneural}
 }
 ```
 
