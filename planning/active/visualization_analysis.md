@@ -312,8 +312,10 @@ viz.plot_fidelity_vs_angle(trainer, angles)  # Works with fixed-time
 - ⏳ = Requires time-optimal training (needs NN chaining)
 
 ### Phase 1: Core Visualizations (Fixed-Time) ✅
-- [ ] `plot_loss_convergence()` - Basic training curves ✅
-- [ ] `plot_pulses_vs_time()` - Time series ✅
+- [x] `plot_loss_convergence()` - Basic training curves ✅ **IMPLEMENTED**
+- [x] `plot_training_summary()` - Multi-metric training views ✅ **IMPLEMENTED**
+- [x] `plot_pulses_vs_time()` - Time series ✅ **IMPLEMENTED**
+- [x] `plot_pulse_comparison()` - Multi-model comparison ✅ **IMPLEMENTED**
 - [ ] `plot_fidelity_vs_angle()` - Fidelity curves ✅
 
 ### Phase 2: Time-Optimal Specific ⏳
@@ -324,7 +326,7 @@ viz.plot_fidelity_vs_angle(trainer, angles)  # Works with fixed-time
 ### Phase 3: Advanced Plots (Both)
 - [ ] `plot_pulse_3d_surface()` - 3D visualization ✅
 - [ ] `plot_fidelity_landscape()` - Heatmaps ✅
-- [ ] `plot_pulse_comparison()` - Multi-model ✅
+- [x] `plot_pulse_comparison()` - Multi-model ✅ **IMPLEMENTED**
 
 ### Phase 4: Analysis Tools (Both)
 - [ ] `FidelityAnalyzer` class ✅
