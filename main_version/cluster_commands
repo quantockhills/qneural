@@ -1,0 +1,9 @@
+module unload devel/python
+module load devel/python/3.11.1
+source theta/bin/activate
+srun -N 1 -c 12 --mem-per-cpu 1G --job-name $USER --pty bash
+cd cluster_minimal
+ipython -i cluster_optim_prelim.py
+
+For copying: 
+scp cluster_minimal/single_optim.py pasqal:/home/mmohan/cluster_minimal

@@ -248,7 +248,170 @@ class QuantumTrainer:
         }
         
         return avg_loss.item(), metrics
+
+
+class FixedRabiTrainer(QuantumTrainer):
+    """
+    Specialized trainer for fixed-rabi, variable-detuning optimization.
     
+    This trainer keeps the Rabi frequency constant at its maximum value
+    and only optimizes the detuning pulse. This is the standard approach
+    for achieving high-fidelity CZ gates with neural networks.
+    
+    Parameters
+    ----------
+    network : nn.Module
+        Neural network with output_dim=1 (detuning only)
+    nqubits : int
+        Number of qubits
+    rabi_max : float
+        Maximum Rabi frequency (constant value to use)
+    loss_fn : QuantumLoss, optional
+        Loss function (defaults to InfidelityLoss)
+    pulse_generator : PhysicalPulseGenerator, optional
+        Pulse generator for detuning
+    evolver : QuantumEvolver, optional
+        Quantum evolver
+    optimizer : torch.optim.Optimizer, optional
+        Optimizer
+    device : str
+        Device to run on
+        
+    Examples
+    --------
+    >>> from qneural.neural import FeedForwardNN
+    >>> from qneural.gates.rydberg import CZPhiGate
+    >>> 
+    >>> gate = CZPhiGate()
+    >>> network = FeedForwardNN(
+    ...     input_dim=2, output_dim=1,  # Detuning only!
+    ...     hidden_layers=6, hidden_units=150,
+    ...     weight_scale=1.8
+    ... )
+    >>> trainer = FixedRabiTrainer(
+    ...     network=network,
+    ...     nqubits=2,
+    ...     rabi_max=gate.rabi_max
+    ... )
+    >>> history = trainer.train(
+    ...     angles=torch.tensor([np.pi]),  # CZ gate
+    ...     gate_time=7.62 / gate.rabi_max,
+    ...     epochs=500
+    ... )
+    """
+    
+    def __init__(
+        self,
+        network: nn.Module,
+        nqubits: int,
+        rabi_max: float,
+        loss_fn: Optional[QuantumLoss] = None,
+        pulse_generator: Optional[PhysicalPulseGenerator] = None,
+        evolver: Optional[QuantumEvolver] = None,
+        optimizer: Optional[torch.optim.Optimizer] = None,
+        device: str = 'cpu'
+    ):
+        # Use InfidelityLoss by default
+        if loss_fn is None:
+            loss_fn = InfidelityLoss(nqubits=nqubits)
+        
+        super().__init__(
+            network=network,
+            nqubits=nqubits,
+            loss_fn=loss_fn,
+            pulse_generator=pulse_generator,
+            evolver=evolver,
+            optimizer=optimizer,
+            device=device
+        )
+        
+        self.rabi_max = rabi_max
+        
+    def _train_step(
+        self,
+        angles: torch.Tensor,
+        gate_time: float
+    ) -> Tuple[float, Dict]:
+        """
+        Training step with fixed Rabi, learned detuning.
+        
+        Key difference from base class: Rabi is constant, only
+        detuning comes from the neural network.
+        """
+        self.network.train()
+        self.optimizer.zero_grad()
+        
+        # Generate inputs for NN: [angle, normalized_time] pairs
+        n_angles = len(angles)
+        n_steps = self.pulse_generator.n_time_steps
+        time_grid = torch.linspace(0, 1, n_steps, device=self.device)
+        
+        # Create input tensor
+        angles_repeated = angles.repeat_interleave(n_steps)
+        time_repeated = time_grid.repeat(n_angles)
+        inputs = torch.stack([angles_repeated, time_repeated], dim=1)
+        
+        # Forward pass through NN (outputs detuning only)
+        nn_outputs = self.network(inputs)  # [n_angles * n_steps, 1]
+        nn_outputs = nn_outputs.reshape(n_angles, n_steps, -1)
+        
+        # Constant Rabi pulse function
+        def rabi_pulse(t):
+            return torch.tensor(self.rabi_max, device=self.device)
+        
+        # Process each angle
+        total_loss = torch.tensor(0.0, device=self.device)
+        total_infidelity = torch.tensor(0.0, device=self.device)
+        
+        for i, angle in enumerate(angles):
+            # Get detuning values from NN
+            detuning_values = self.pulse_generator.scale_output(nn_outputs[i, :, 0], 0)
+            
+            # Create piecewise detuning function
+            def make_detuning_fn(values, gt):
+                def fn(t):
+                    idx = int(t / gt * (len(values) - 1))
+                    idx = min(idx, len(values) - 1)
+                    return values[idx]
+                return fn
+            
+            detuning_fn = make_detuning_fn(detuning_values, gate_time)
+            
+            # Pulses: constant Rabi + learned detuning
+            pulses = [rabi_pulse, detuning_fn]
+            
+            # Evolve with phase corrections applied
+            final_unitary = self.evolver.evolve(pulses, gate_time, apply_corrections=True)
+            
+            # Compute target
+            target_unitary = czphi_gate(angle.item())
+            
+            # Compute loss (compare corrected to target)
+            infidelity = unitary_infidelity(
+                final_unitary,
+                target_unitary,
+                nqubits=self.nqubits
+            )
+            loss = self.loss_fn(final_unitary, target_unitary)
+            
+            total_loss += loss
+            total_infidelity += infidelity
+        
+        # Average over angles
+        avg_loss = total_loss / n_angles
+        avg_infidelity = total_infidelity / n_angles
+        
+        # Backward pass
+        avg_loss.backward()
+        self.optimizer.step()
+        
+        metrics = {
+            'loss': avg_loss.item(),
+            'infidelity': avg_infidelity.item()
+        }
+        
+        return avg_loss.item(), metrics
+
     def evaluate(self, angles: torch.Tensor, gate_time: float) -> Dict:
         """
         Evaluate the trained network.

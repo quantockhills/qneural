@@ -79,6 +79,7 @@ from .evolution import (
 # Training
 from .trainer import (
     QuantumTrainer,
+    FixedRabiTrainer,
     TimeOptimalTrainer,
     create_trainer,
 )
@@ -122,6 +123,7 @@ __all__ = [
     
     # Training
     'QuantumTrainer',
+    'FixedRabiTrainer',
     'TimeOptimalTrainer',
     'create_trainer',
 ]
