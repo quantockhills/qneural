@@ -99,7 +99,7 @@ class QuantumTrainer:
         
         # Create default evolver if not provided
         if evolver is None:
-            self.evolver = create_evolver(nqubits)
+            self.evolver = create_evolver(nqubits, n_time_steps=self.pulse_generator.n_time_steps)
         else:
             self.evolver = evolver
         
@@ -314,7 +314,19 @@ class FixedRabiTrainer(QuantumTrainer):
         # Use InfidelityLoss by default
         if loss_fn is None:
             loss_fn = InfidelityLoss(nqubits=nqubits)
-        
+
+        # Create pulse generator for detuning only if not provided
+        if pulse_generator is None:
+            pulse_generator = PhysicalPulseGenerator(
+                n_controls=1,  # Detuning only!
+                n_time_steps=301,  # Higher resolution for better numerical accuracy
+                control_ranges=[(-2*rabi_max, 2*rabi_max)]
+            )
+
+        # Create evolver with matching time steps if not provided
+        if evolver is None:
+            evolver = create_evolver(nqubits, n_time_steps=pulse_generator.n_time_steps)
+
         super().__init__(
             network=network,
             nqubits=nqubits,
@@ -324,8 +336,10 @@ class FixedRabiTrainer(QuantumTrainer):
             optimizer=optimizer,
             device=device
         )
-        
+
         self.rabi_max = rabi_max
+        # Precompute time grid for efficiency and convergence
+        self._time_grid = None
         
     def _train_step(
         self,
@@ -344,7 +358,12 @@ class FixedRabiTrainer(QuantumTrainer):
         # Generate inputs for NN: [angle, normalized_time] pairs
         n_angles = len(angles)
         n_steps = self.pulse_generator.n_time_steps
-        time_grid = torch.linspace(0, 1, n_steps, device=self.device)
+        
+        # CRITICAL: Precompute time grid once for convergence
+        # Creating it fresh every epoch breaks training!
+        if self._time_grid is None or len(self._time_grid) != n_steps:
+            self._time_grid = torch.linspace(0, 1, n_steps, device=self.device)
+        time_grid = self._time_grid
         
         # Create input tensor
         angles_repeated = angles.repeat_interleave(n_steps)

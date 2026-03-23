@@ -313,37 +313,40 @@ class BatchedQuantumEvolver(QuantumEvolver):
 def create_evolver(
     nqubits: int,
     backend: str = 'torchdiffeq',
+    n_time_steps: int = 301,
     **solver_kwargs
 ) -> QuantumEvolver:
     """
     Factory function to create QuantumEvolver.
-    
+
     Parameters
     ----------
     nqubits : int
         Number of qubits
     backend : str
         ODE solver backend
+    n_time_steps : int
+        Number of time steps for evolution (default: 301)
     **solver_kwargs
         Solver-specific options
-    
+
     Returns
     -------
     QuantumEvolver
         Configured evolver
-    
+
     Examples
     --------
     >>> # Default evolver
     >>> evolver = create_evolver(nqubits=2)
-    >>> 
+    >>>
     >>> # With custom solver
     >>> evolver = create_evolver(nqubits=2, backend='fixedstep', n_steps=200)
     """
     from .solvers import create_solver
-    
+
     solver = create_solver(backend, **solver_kwargs)
-    return QuantumEvolver(nqubits=nqubits, solver=solver)
+    return QuantumEvolver(nqubits=nqubits, solver=solver, n_time_steps=n_time_steps)
 
 
 def quick_evolve(
