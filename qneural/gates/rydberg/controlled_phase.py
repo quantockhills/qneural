@@ -27,7 +27,8 @@ from ...neural import (
     QuantumEvolver,
     create_evolver,
     QuantumTrainer,
-    create_time_optimal_loss
+    create_time_optimal_loss,
+    InfidelityLoss
 )
 from ...hardware.rydberg import RydbergHamiltonian, RABI_DEFAULT
 
@@ -381,11 +382,15 @@ class ControlledPhaseOptimizer:
             self.evolver = evolver
         
         if trainer is None:
-            loss_fn = create_time_optimal_loss(
-                nqubits=gate.total_qubits,
-                infidelity_weight=1.0,
-                time_weight=0.1 if time_optimal else 0.0
-            )
+            if time_optimal:
+                loss_fn = create_time_optimal_loss(
+                    nqubits=gate.total_qubits,
+                    infidelity_weight=1.0,
+                    time_weight=0.1
+                )
+            else:
+                loss_fn = InfidelityLoss(nqubits=gate.total_qubits)
+            
             self.trainer = QuantumTrainer(
                 network=self.network,
                 nqubits=gate.total_qubits,
