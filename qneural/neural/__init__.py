@@ -34,7 +34,12 @@ Examples
 from .models import (
     FeedForwardNN,
     PulseGenerator,
+)
+
+# Time-optimal control
+from .time_optimal import (
     TimeOptimalController,
+    TimeOptimalTrainer,
 )
 
 # Loss functions
@@ -80,7 +85,6 @@ from .evolution import (
 from .trainer import (
     QuantumTrainer,
     FixedRabiTrainer,
-    TimeOptimalTrainer,
     create_trainer,
 )
 
@@ -88,7 +92,10 @@ __all__ = [
     # Models
     'FeedForwardNN',
     'PulseGenerator',
+    
+    # Time-optimal control
     'TimeOptimalController',
+    'TimeOptimalTrainer',
     
     # Losses
     'QuantumLoss',
@@ -124,6 +131,5 @@ __all__ = [
     # Training
     'QuantumTrainer',
     'FixedRabiTrainer',
-    'TimeOptimalTrainer',
     'create_trainer',
 ]
