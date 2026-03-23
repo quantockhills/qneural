@@ -169,13 +169,16 @@ class ControlledPhaseGate(ABC):
         self,
         unitary: torch.Tensor
     ) -> torch.Tensor:
-        """Apply correction to single unitary."""
-        # Extract phases from diagonal
-        phases = torch.angle(torch.diag(unitary))
+        """Apply symmetric phase correction to single unitary."""
+        # Extract phase from |01⟩ state only (symmetric formula)
+        phi_01 = torch.angle(unitary[1, 1])
         
-        # Construct correction: remove all phases relative to |00...0⟩
-        correction = torch.diag(torch.exp(-1.0j * phases))
-        correction[0, 0] = 1.0  # Keep |00...0⟩ phase as reference
+        # Construct symmetric correction
+        j1 = torch.exp(-1.0j * phi_01)
+        correction = torch.eye(4, dtype=torch.cfloat, device=unitary.device)
+        correction[1, 1] = j1      # |01⟩
+        correction[2, 2] = j1      # |10⟩ (same phase)
+        correction[3, 3] = j1 ** 2  # |11⟩ (squared)
         
         return correction @ unitary
     
@@ -492,8 +495,8 @@ class ControlledPhaseOptimizer:
         """
         pulses, gate_time = self.generate_pulse(angle)
         
-        # Evolve
-        final_unitary = self.evolver.evolve(pulses, gate_time)
+        # Evolve (NO automatic corrections - we'll apply manually)
+        final_unitary = self.evolver.evolve(pulses, gate_time, apply_corrections=False)
         
         # Reduce and correct
         reduced = self.gate.reduce_to_computational_basis(final_unitary)

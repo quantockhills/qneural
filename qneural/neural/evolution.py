@@ -192,19 +192,23 @@ class QuantumEvolver:
         unitary: torch.Tensor
     ) -> torch.Tensor:
         """
-        Apply single-qubit phase corrections.
+        Apply single-qubit phase corrections using symmetric formula.
         
-        These corrections remove local phases that don't affect
-        the entangling operation but are needed for correct gate.
+        Uses only |01⟩ phase and applies symmetrically:
+        - |01⟩ and |10⟩ get e^{-iφ}
+        - |11⟩ gets e^{-2iφ} = (e^{-iφ})²
+        
+        This matches the original paper's approach for symmetric pulses.
         """
-        # Extract phases from diagonal elements
-        # For 2-qubit case: |00⟩, |01⟩, |10⟩, |11⟩ phases
-        phases = torch.angle(torch.diag(unitary))
+        # Extract phase from |01⟩ state only
+        phi_01 = torch.angle(unitary[1, 1])
         
-        # Construct correction unitary
-        # This removes the phases from non-|00⟩ states
-        correction = torch.diag(torch.exp(-1.0j * phases))
-        correction[0, 0] = 1.0  # Keep |00⟩ phase as reference
+        # Construct symmetric correction
+        j1 = torch.exp(-1.0j * phi_01)
+        correction = torch.eye(4, dtype=torch.cfloat, device=unitary.device)
+        correction[1, 1] = j1      # |01⟩
+        correction[2, 2] = j1      # |10⟩ (same phase)
+        correction[3, 3] = j1 ** 2  # |11⟩ (squared)
         
         # Apply correction
         corrected = correction @ unitary
