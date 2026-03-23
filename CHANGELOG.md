@@ -5,14 +5,34 @@ All notable changes to the qneural project.
 ## [Unreleased]
 
 ### Fixed
+- **CRITICAL**: Double phase correction bug in `ControlledPhaseOptimizer.evaluate()`
+  - Was applying phase corrections twice (in both compute_loss() and evaluate())
+  - Result: Training stuck at ~40-60% fidelity
+  - Fix: Remove redundant correction in evaluate()
+  
+- **CRITICAL**: Phase correction formula
+  - Original: Independent diagonal phase corrections (incorrect)
+  - Fixed: Symmetric correction using |01⟩ phase (matching original paper)
+  - Result: Training now achieves **>99% fidelity**
+
 - Training performance: Fixed gate time units (using normalized time instead of absolute seconds)
 - Training now 100-200x faster (0.6s vs 90s for quick test)
 - Fixed unitary evolution NaN issue by using complex ODEs directly (no real/imag conversion)
 
 ### Added
+- **FixedRabiTrainer** class for detuning-only optimization
+  - Clean API for constant rabi + learned detuning
+  - Achieves >99% fidelity on CZ gates reliably
+  - Working example in `01_high_fidelity_cz_gate.ipynb`
+  
 - Comprehensive integration tests (18 physics validation tests)
 - Jaksch protocol test validates Rydberg blockade mechanism
 - All 142 tests passing (124 unit + 18 integration)
+
+### Changed
+- Updated documentation (README, VALIDATION_REPORT) to reflect working state
+- FixedRabiTrainer now recommended for production use
+- Phase correction formula now matches original research paper
 
 ## [2026-03-21]
 
@@ -101,4 +121,4 @@ All notable changes to the qneural project.
 
 ---
 
-**Last Updated:** March 21, 2026
+**Last Updated:** March 23, 2026

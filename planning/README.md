@@ -79,6 +79,13 @@ This directory tracks all development plans, ideas, and the project roadmap.
 
 ### Recent Achievements
 
+- **✨ Training Achieves >99% Fidelity!** (March 23, 2026)
+  - Fixed critical double phase correction bug
+  - Fixed phase correction formula (symmetric correction)
+  - Created `FixedRabiTrainer` class for detuning-only optimization
+  - CZ gate optimization now achieves >99% fidelity
+  - Working example in `01_high_fidelity_cz_gate.ipynb`
+
 - **Training Performance Fix** (March 21, 2026)
   - Fixed gate time units (was using absolute seconds instead of normalized 1/Ω_max)
   - Training now 100-200x faster (0.6s vs 90s per test)
@@ -129,4 +136,4 @@ Old or superseded plans are kept here for reference.
 
 ---
 
-**Last Updated:** March 21, 2026
+**Last Updated:** March 23, 2026
