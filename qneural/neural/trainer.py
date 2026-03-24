@@ -385,16 +385,10 @@ class FixedRabiTrainer(QuantumTrainer):
         for i, angle in enumerate(angles):
             # Get detuning values from NN
             detuning_values = self.pulse_generator.scale_output(nn_outputs[i, :, 0], 0)
-            
-            # Create piecewise detuning function
-            def make_detuning_fn(values, gt):
-                def fn(t):
-                    idx = int(t / gt * (len(values) - 1))
-                    idx = min(idx, len(values) - 1)
-                    return values[idx]
-                return fn
-            
-            detuning_fn = make_detuning_fn(detuning_values, gate_time)
+
+            # Create piecewise detuning function using shared utility
+            from ..hardware.rydberg.pulses import create_simple_detuning_pulse
+            detuning_fn = create_simple_detuning_pulse(detuning_values, gate_time)
             
             # Pulses: constant Rabi + learned detuning
             pulses = [rabi_pulse, detuning_fn]
