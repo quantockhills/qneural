@@ -180,6 +180,43 @@ def piecewise_constant_nn_output(
     return pulse_fn
 
 
+def create_simple_detuning_pulse(
+    values: torch.Tensor,
+    gate_time: float
+) -> Callable:
+    """
+    Create a simple detuning pulse function for single-angle evolution.
+
+    This is the canonical formula used in FixedRabiTrainer for consistency.
+    Uses the formula: idx = int(t / gate_time * (len(values) - 1))
+
+    Parameters
+    ----------
+    values : torch.Tensor
+        Detuning values at each time step, shape [n_time_steps]
+    gate_time : float
+        Total gate time in seconds
+
+    Returns
+    -------
+    Callable
+        Function f(t) that returns detuning value at time t
+
+    Examples
+    --------
+    >>> detuning_vals = torch.tensor([1.0, 2.0, 3.0, 4.0])
+    >>> pulse = create_simple_detuning_pulse(detuning_vals, gate_time=1.0)
+    >>> pulse(0.0)   # Returns 1.0 (first value)
+    >>> pulse(0.5)   # Returns 2.0 (middle value)
+    >>> pulse(1.0)   # Returns 4.0 (last value)
+    """
+    def pulse_fn(t):
+        idx = int(t / gate_time * (len(values) - 1))
+        idx = min(idx, len(values) - 1)
+        return values[idx]
+    return pulse_fn
+
+
 # =============================================================================
 # Smooth Pulse Shapes
 # =============================================================================
