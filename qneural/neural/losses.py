@@ -149,44 +149,81 @@ class TimePenaltyLoss(QuantumLoss):
 
 class RobustnessLoss(QuantumLoss):
     """
-    Robustness loss against noise (placeholder for future).
-    
-    Can be extended to penalize sensitivity to various noise sources:
+    Robustness loss against noise (NOT YET IMPLEMENTED - Beta Feature).
+
+    This class is a placeholder for future implementation. It will be used to
+    penalize sensitivity to various noise sources:
     - Rabi frequency fluctuations
     - Detuning errors
     - Timing jitter
+
+    **Status**: Planned for v1.0 release
+
+    Raises
+    ------
+    NotImplementedError
+        This feature is not yet available in the current beta release.
     """
-    
+
     def __init__(self, noise_strength: float = 0.01):
         super().__init__()
         self.noise_strength = noise_strength
-    
+        import warnings
+        warnings.warn(
+            "RobustnessLoss is not yet implemented in this beta release. "
+            "This feature is planned for v1.0. The loss will return zero.",
+            FutureWarning,
+            stacklevel=2
+        )
+
     def forward(
         self,
         achieved_unitary: torch.Tensor,
         target_unitary: torch.Tensor,
         **kwargs
     ) -> torch.Tensor:
-        """Compute robustness loss (placeholder)."""
-        # TODO: Implement robustness calculation
-        # For now, return zero
+        """
+        Compute robustness loss (not yet implemented).
+
+        Returns
+        -------
+        torch.Tensor
+            Zero tensor (placeholder implementation)
+        """
+        # Placeholder: returns zero until proper implementation
         return torch.tensor(0.0, device=achieved_unitary.device)
 
 
 class ResourceLoss(QuantumLoss):
     """
-    Resource utilization loss (placeholder for future).
-    
-    Can penalize:
-    - High pulse amplitudes
-    - Rapid pulse variations
-    - Total pulse energy
+    Resource utilization loss (MINIMAL IMPLEMENTATION - Beta Feature).
+
+    Currently implements basic pulse amplitude penalization.
+    Future versions will include:
+    - Rapid pulse variation penalties
+    - Total pulse energy constraints
+    - Hardware-specific resource limits
+
+    **Status**: Basic implementation in beta, full features planned for v1.0
+
+    Parameters
+    ----------
+    weight : float
+        Weight for resource penalty (default: 0.01)
     """
-    
+
     def __init__(self, weight: float = 0.01):
         super().__init__()
         self.weight = weight
-    
+        import warnings
+        warnings.warn(
+            "ResourceLoss has minimal implementation in this beta release. "
+            "Only basic pulse amplitude penalization is available. "
+            "Full resource optimization planned for v1.0.",
+            FutureWarning,
+            stacklevel=2
+        )
+
     def forward(
         self,
         achieved_unitary: torch.Tensor,
@@ -194,11 +231,25 @@ class ResourceLoss(QuantumLoss):
         pulses: Optional[torch.Tensor] = None,
         **kwargs
     ) -> torch.Tensor:
-        """Compute resource loss (placeholder)."""
+        """
+        Compute resource loss (minimal implementation).
+
+        Currently penalizes high pulse amplitudes only.
+
+        Parameters
+        ----------
+        pulses : torch.Tensor, optional
+            Control pulse amplitudes
+
+        Returns
+        -------
+        torch.Tensor
+            Resource penalty (zero if no pulses provided)
+        """
         if pulses is None:
             return torch.tensor(0.0, device=achieved_unitary.device)
-        
-        # Example: penalize high pulse amplitudes
+
+        # Basic implementation: penalize high pulse amplitudes
         return self.weight * torch.mean(pulses ** 2)
 
 

@@ -231,28 +231,44 @@ class FixedStepSolver(ODESolver):
         return f"FixedStep_{self.method}_{self.n_steps}"
 
 
-# Future placeholder for Diffrax backend
+# Future placeholder for JAX backend
 class DiffraxSolver(ODESolver):
     """
-    ODE solver using Diffrax (JAX-based).
-    
-    This is a placeholder for future JAX integration.
-    Diffrax provides high-performance ODE solving with XLA compilation.
-    
-    Note: This requires JAX to be installed.
+    ODE solver using Diffrax (JAX-based) - NOT YET IMPLEMENTED.
+
+    This is a placeholder for future JAX backend integration (planned for v1.0).
+    Diffrax will provide high-performance ODE solving with XLA compilation
+    for improved training speed.
+
+    **Status**: Planned for v1.0 release
+
+    **Current Alternative**: Use `TorchDiffeqSolver` which is fully functional
+    and provides comparable accuracy.
+
+    Raises
+    ------
+    NotImplementedError
+        This solver is not yet available. JAX backend support is planned
+        for the v1.0 release.
+
+    See Also
+    --------
+    TorchDiffeqSolver : Current production solver using PyTorch backend
     """
-    
+
     def __init__(self, **kwargs):
         raise NotImplementedError(
-            "DiffraxSolver is a placeholder for future JAX integration. "
-            "Please use TorchDiffeqSolver for now."
+            "DiffraxSolver is not yet implemented (planned for v1.0 with JAX backend). "
+            "Please use TorchDiffeqSolver instead:\n"
+            "  from qneural.neural.solvers import TorchDiffeqSolver\n"
+            "  solver = TorchDiffeqSolver(method='rk4')"
         )
-    
+
     def solve(self, *args, **kwargs):
-        raise NotImplementedError()
-    
+        raise NotImplementedError("DiffraxSolver not yet implemented")
+
     def get_name(self):
-        return "Diffrax"
+        return "Diffrax (not implemented)"
 
 
 # Solver factory

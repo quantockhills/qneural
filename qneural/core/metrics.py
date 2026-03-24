@@ -148,7 +148,7 @@ def unitary_infidelity_batch(U1_batch, U2_batch, nqubits=1):
     return 1.0 - unitary_fidelity_batch(U1_batch, U2_batch, nqubits)
 
 
-def unitary_infidelity_array(U1, U2, dim=2, nqbits=1):
+def unitary_infidelity_array(U1, U2, dim=2, nqubits=1):
     """
     Legacy interface for infidelity computation.
 
@@ -162,7 +162,7 @@ def unitary_infidelity_array(U1, U2, dim=2, nqbits=1):
         Second unitary or batch, shape [n, n] or [batch, n, n]
     dim : int, optional
         Local Hilbert space dimension (not used, kept for compatibility)
-    nqbits : int, optional
+    nqubits : int, optional
         Number of qubits
 
     Returns
@@ -172,10 +172,10 @@ def unitary_infidelity_array(U1, U2, dim=2, nqbits=1):
     """
     if U1.dim() == 2:
         # Single unitary pair
-        return unitary_infidelity(U1, U2, nqbits)
+        return unitary_infidelity(U1, U2, nqubits)
     else:
         # Batch
-        return unitary_infidelity_batch(U1, U2, nqbits)
+        return unitary_infidelity_batch(U1, U2, nqubits)
 
 
 # =============================================================================
