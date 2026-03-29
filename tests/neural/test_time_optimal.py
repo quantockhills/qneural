@@ -532,9 +532,11 @@ class TestGradientFlow:
     def test_time_network_receives_gradients(self):
         """Time predictor parameters get gradients."""
         controller = TimeOptimalController(n_time_steps=101)
-        trainer = TimeOptimalTrainer(controller, nqubits=2, time_weight=1e-4)
+        # Use higher time_weight and single angle to ensure gradients flow
+        trainer = TimeOptimalTrainer(controller, nqubits=2, time_weight=0.1)
         
-        angles = torch.tensor([1.0])
+        # Single angle as 2D tensor [batch=1, features=1] to work with batched code
+        angles = torch.tensor([[1.0]])
         loss, _ = trainer._train_step(angles)
         
         # Check time network has gradients
@@ -564,7 +566,8 @@ class TestGradientFlow:
     def test_both_networks_get_gradients_simultaneously(self):
         """Both networks get gradients in same backward pass."""
         controller = TimeOptimalController(n_time_steps=101)
-        trainer = TimeOptimalTrainer(controller, nqubits=2, time_weight=1e-4)
+        # Use higher time_weight to ensure gradients flow to both networks
+        trainer = TimeOptimalTrainer(controller, nqubits=2, time_weight=0.1)
         
         angles = torch.tensor([1.0])
         

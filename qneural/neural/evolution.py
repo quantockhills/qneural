@@ -193,26 +193,30 @@ class QuantumEvolver:
     ) -> torch.Tensor:
         """
         Apply single-qubit phase corrections using symmetric formula.
-        
-        Uses only |01⟩ phase and applies symmetrically:
-        - |01⟩ and |10⟩ get e^{-iφ}
-        - |11⟩ gets e^{-2iφ} = (e^{-iφ})²
-        
+
+        Uses only |01⟩ phase and applies symmetrically to all computational states.
+        For N qubits:
+        - |0...01⟩ gets e^{-iφ}
+        - States with k ones in them get (e^{-iφ})^k
+
         This matches the original paper's approach for symmetric pulses.
         """
-        # Extract phase from |01⟩ state only
+        # Extract phase from |00...01⟩ state (index 1)
         phi_01 = torch.angle(unitary[1, 1])
-        
-        # Construct symmetric correction
+
+        # Construct symmetric correction for N qubits
         j1 = torch.exp(-1.0j * phi_01)
-        correction = torch.eye(4, dtype=torch.cfloat, device=unitary.device)
-        correction[1, 1] = j1      # |01⟩
-        correction[2, 2] = j1      # |10⟩ (same phase)
-        correction[3, 3] = j1 ** 2  # |11⟩ (squared)
-        
+        correction = torch.eye(self.comp_dim, dtype=torch.cfloat, device=unitary.device)
+
+        # Apply correction based on number of 1s in binary representation
+        for i in range(1, self.comp_dim):
+            # Count number of 1s in binary representation
+            num_ones = bin(i).count('1')
+            correction[i, i] = j1 ** num_ones
+
         # Apply correction
         corrected = correction @ unitary
-        
+
         return corrected
     
     def compute_infidelity(

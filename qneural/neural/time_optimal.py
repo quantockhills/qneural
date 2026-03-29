@@ -222,13 +222,16 @@ class TimeOptimalController(nn.Module):
         normalized_time = self.time_predictor(angle)  # [batch, 1]
 
         # Step 2: Scale to physical time bounds
-        # time_bounds is expected in actual seconds
-        t_min, t_max = self.time_bounds
+        # time_bounds are in units of 1/rabi_max, convert to seconds
+        t_min_normalized, t_max_normalized = self.time_bounds
+        t_min = t_min_normalized / self.rabi_max  # Convert to seconds
+        t_max = t_max_normalized / self.rabi_max  # Convert to seconds
+
         if self.time_output_activation == 'tanh':
-            # [-1, 1] → [t_min, t_max]
+            # [-1, 1] → [t_min, t_max] in seconds
             gate_time = 0.5 * (normalized_time + 1) * (t_max - t_min) + t_min
         else:
-            # [0, 1] → [t_min, t_max]
+            # [0, 1] → [t_min, t_max] in seconds
             gate_time = normalized_time * (t_max - t_min) + t_min
         
         self._last_predicted_time = gate_time
@@ -416,7 +419,7 @@ class TimeOptimalTrainer:
     controller : TimeOptimalController
         The controller with time and control networks
     nqubits : int
-        Number of qubits (2 for CPHASE)
+        Number of qubits (2 for CZ_φ, 3 for CCZ_φ, etc.)
     time_weight : float
         Weight for time penalty in loss (default: 1e-4)
     time_lr : float
@@ -427,6 +430,9 @@ class TimeOptimalTrainer:
         ODE solver (default: TorchDiffeqSolver with RK4)
     device : str
         Device to run on ('cpu' or 'cuda')
+    target_gate_fn : Callable[[float], torch.Tensor], optional
+        Function that takes an angle and returns target unitary.
+        If None, defaults to czphi_gate for 2 qubits, cczphi_gate for 3 qubits.
     
     Attributes
     ----------
@@ -459,12 +465,29 @@ class TimeOptimalTrainer:
         time_lr: float = 1e-5,
         control_lr: float = 1e-4,
         solver: Optional[ODESolver] = None,
-        device: str = 'cpu'
+        device: str = 'cpu',
+        target_gate_fn: Optional[Callable] = None
     ):
         self.controller = controller.to(device)
         self.nqubits = nqubits
         self.time_weight = time_weight
         self.device = device
+
+        # Target gate function (defaults to czphi_gate for 2 qubits, cczphi_gate for 3, etc.)
+        if target_gate_fn is None:
+            if nqubits == 2:
+                from ..core.gates import czphi_gate
+                self.target_gate_fn = czphi_gate
+            elif nqubits == 3:
+                from ..core.gates import cczphi_gate
+                self.target_gate_fn = cczphi_gate
+            else:
+                raise ValueError(
+                    f"No default target gate for {nqubits} qubits. "
+                    f"Please provide target_gate_fn parameter."
+                )
+        else:
+            self.target_gate_fn = target_gate_fn
         
         # Separate optimizers with archival settings
         self.time_optimizer = torch.optim.Adam(
@@ -617,7 +640,7 @@ class TimeOptimalTrainer:
         )
 
         # Create target gates for entire batch
-        target_unitaries = torch.stack([czphi_gate(angle.item()) for angle in angles])
+        target_unitaries = torch.stack([self.target_gate_fn(angle.item()) for angle in angles])
 
         # Batched infidelity computation
         infidelities = self._compute_batch_infidelity(final_unitaries, target_unitaries)
@@ -934,8 +957,8 @@ class TimeOptimalTrainer:
                 detuning_fn = self.controller.get_detuning_pulse_fn(detuning, gate_time)
                 
                 final_U = self._evolve(rabi_fn, detuning_fn, gate_time.item())
-                target_U = czphi_gate(angle.item())
-                
+                target_U = self.target_gate_fn(angle.item())
+
                 infidelity = unitary_infidelity(final_U, target_U, nqubits=self.nqubits)
                 
                 results['angles'].append(angle.item())

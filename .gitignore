@@ -28,6 +28,7 @@ Thumbs.db
 
 # Project specific - DON'T COMMIT THESE
 main_version/          # Original research code (keep local only)
+archival/              # Legacy research code (not part of package)
 checkpoints/           # Training checkpoints
 *.pt                   # Model files
 *.pth
