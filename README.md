@@ -1,6 +1,11 @@
 # qneural: Machine Learning for Quantum Control
 
-> ⚠️ **BETA SOFTWARE**: This package is currently in beta (v0.5.0). While the core functionality is validated against published results, APIs may evolve before the stable 1.0 release. We welcome feedback and bug reports via [GitHub Issues](https://github.com/yourusername/qneural/issues).
+![Tests](https://github.com/quantockhills/qneural/workflows/Tests/badge.svg)
+![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Status](https://img.shields.io/badge/status-beta-yellow)
+
+> ⚠️ **BETA SOFTWARE**: This package is currently in beta (v0.5.0). While the core functionality is validated against published results, APIs may evolve before the stable 1.0 release. We welcome feedback and bug reports via [GitHub Issues](https://github.com/quantockhills/qneural/issues).
 
 A modular Python framework for optimizing quantum control protocols using machine learning, with a focus on high-fidelity gate synthesis for neutral atom quantum computers.
 
@@ -44,6 +49,20 @@ While initially focused on neural network-based pulse optimization for neutral a
 - **Training diagnostics**: Loss curves, fidelity tracking, convergence analysis
 - **Pulse visualization**: Plot optimized control sequences (Rabi, detuning) vs. time
 - **Gate analysis**: Unitary fidelity, infidelity decomposition, gate time vs. angle relationships
+
+### Testing & Stability (Beta v0.5.0)
+
+This is a **beta release**. Test status:
+
+- ✅ **Core Tests**: 166/185 passing (90%)
+- ✅ **Physics Validation**: 18/19 integration tests passing
+- ⏳ **Deferred**: 26 slow integration tests (training convergence)
+
+See [TESTING_SUMMARY.md](TESTING_SUMMARY.md) for full details.
+
+**Recommendations**:
+- **Production users**: Wait for v1.0 (full test suite + stability)
+- **Early adopters**: Beta is ready for experimentation and research
 
 ### Known Limitations (Beta)
 
@@ -133,11 +152,21 @@ print(f"Final fidelity: {(1 - history['loss'][-1])*100:.2f}%")
 - **Phase corrections**: Applied automatically during training for accurate two-qubit fidelity computation
 - **Optimal gate time**: Approximately 7.62/Ω_max for CZ gates on neutral atoms (from published results)
 
-### Examples
+### Examples & Tutorials
 
 See the `examples/` directory for complete Jupyter notebook tutorials:
-- [`cz_gate_optimization.ipynb`](examples/cz_gate_optimization.ipynb) - High-fidelity CZ gate synthesis
-- [`cphase_transfer_learning.ipynb`](examples/cphase_transfer_learning.ipynb) - Transfer learning between angle ranges
+
+**🎓 For Beginners**:
+- [`getting_started_2qubit.ipynb`](examples/getting_started_2qubit.ipynb) - **START HERE!** Comprehensive beginner-friendly introduction to qneural
+  - Explains quantum gates, neural networks, and control pulses from scratch
+  - No quantum computing background required
+  - Step-by-step walkthrough with visualizations
+  - Includes transfer learning tutorial
+
+**📚 Technical Tutorials**:
+- [`cphase_transfer_learning.ipynb`](examples/cphase_transfer_learning.ipynb) - Transfer learning for 2-qubit CZ_φ gates (more concise)
+- [`ccphase_transfer_learning.ipynb`](examples/ccphase_transfer_learning.ipynb) - 3-qubit CCZ_φ gates with pre-trained models
+- [`cz_gate_optimization.ipynb`](examples/cz_gate_optimization.ipynb) - Training from scratch for single angles
 - [`cphase_gate_optimization.ipynb`](examples/cphase_gate_optimization.ipynb) - Full CZ_φ family optimization
 
 ## Project Structure
