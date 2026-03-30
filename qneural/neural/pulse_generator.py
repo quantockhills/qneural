@@ -249,27 +249,27 @@ class TimeOptimalPulseGenerator(PhysicalPulseGenerator):
 class BatchedPulseGenerator:
     """
     Generates pulses for multiple angles simultaneously (batch processing).
-    
+
     This is useful for training on angle families, where you optimize
     a single NN to work across a range of angles.
-    
+
     Parameters
     ----------
-    pulse_generator : PulseGenerator
+    pulse_generator : PhysicalPulseGenerator
         Base pulse generator to use for each angle
-    
+
     Examples
     --------
-    >>> base_gen = PulseGenerator(n_controls=2, n_time_steps=201, ...)
+    >>> base_gen = PhysicalPulseGenerator(n_controls=2, n_time_steps=201, ...)
     >>> batched_gen = BatchedPulseGenerator(base_gen)
-    >>> 
+    >>>
     >>> # Generate for multiple angles
     >>> angles = torch.linspace(0.1, torch.pi, 80)
     >>> nn_outputs = torch.rand(80, 201, 2)  # [batch, time, controls]
     >>> all_pulses = batched_gen.generate_batch(nn_outputs, gate_times)
     """
-    
-    def __init__(self, pulse_generator: PulseGenerator):
+
+    def __init__(self, pulse_generator: "PhysicalPulseGenerator"):
         self.pulse_generator = pulse_generator
     
     def generate_batch(
