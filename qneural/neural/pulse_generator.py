@@ -311,10 +311,10 @@ def create_default_physical_pulse_generator(
     rabi_max: float,
     detuning_range: Tuple[float, float] = None,
     n_time_steps: int = 201
-) -> PulseGenerator:
+) -> "PhysicalPulseGenerator":
     """
     Create a standard pulse generator for Rydberg systems.
-    
+
     Parameters
     ----------
     rabi_max : float
@@ -323,10 +323,10 @@ def create_default_physical_pulse_generator(
         Detuning range (default: [-2*rabi_max, 2*rabi_max])
     n_time_steps : int
         Number of time steps
-    
+
     Returns
     -------
-    PulseGenerator
+    PhysicalPulseGenerator
         Configured pulse generator
     
     Examples
