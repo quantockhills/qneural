@@ -7,6 +7,7 @@ This verifies that:
 3. It's significantly faster than sequential processing
 """
 
+import pytest
 import torch
 import time
 import sys
@@ -19,6 +20,8 @@ from qneural.neural.time_optimal import TimeOptimalTrainer, TimeOptimalControlle
 from qneural.core.gates import czphi_gate
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 def test_batched_trainer():
     """Test that batched trainer runs and optimizes properly."""
     print("=" * 80)
@@ -111,6 +114,8 @@ def test_batched_trainer():
     return trainer, losses
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 def test_batch_processing_speed():
     """Compare batched vs sequential processing speed (conceptual)."""
     print("\n" + "=" * 80)

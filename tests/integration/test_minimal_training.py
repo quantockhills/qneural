@@ -24,6 +24,8 @@ from qneural.neural import (
 )
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 def test_training_runs_for_three_epochs():
     """Ultra-minimal: Just verify training can run for 3 epochs."""
     print("\n" + "="*60)

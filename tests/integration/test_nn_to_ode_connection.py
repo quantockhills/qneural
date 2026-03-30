@@ -21,6 +21,8 @@ from qneural.neural import (
 from qneural.hardware.rydberg import RABI_DEFAULT
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 class TestNNtoODEConnection:
     """Test that NN output correctly flows through to ODE evolution."""
 

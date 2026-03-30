@@ -20,6 +20,8 @@ from qneural.neural import (
 from qneural.hardware.rydberg import RABI_DEFAULT
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 class TestAutodiffThroughODE:
     """Test that gradients flow through ODE solver."""
 

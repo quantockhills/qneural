@@ -128,12 +128,18 @@ def convert_archival_to_new_format(
         sys.path.insert(0, archival_path)
     
     try:
-        # Import old model classes
-        import const_czphi as czphi
-        
-        # Load old model
+        # Load old model first to detect type
         old_data = torch.load(old_model_path, map_location='cpu', weights_only=False)
         old_network = old_data['network']
+        
+        # Detect if 2-qubit or 3-qubit based on module name
+        network_module = type(old_network).__module__
+        if 'cczphi' in network_module or 'ccphase' in network_module:
+            nqubits = 3
+            import const_cczphi as czphi
+        else:
+            nqubits = 2
+            import const_czphi as czphi
         
         # Detect architecture
         arch = detect_architecture(old_network)
@@ -207,7 +213,9 @@ def convert_archival_to_new_format(
                 'angle_range': angle_range,
                 'angle_range_tensor': angle_range_tensor,
                 'angle_range_source': angle_range_source,
-                'note': (metadata or {}).get('note', 'Publication-quality results converted from archival format'),
+                'nqubits': nqubits,
+                'target_gate_type': 'cczphi_gate' if nqubits == 3 else 'czphi_gate',
+                'note': (metadata or {}).get('note', f'Publication-quality results for {nqubits}-qubit phase gate converted from archival format'),
                 'missing_data': ['training_history', 'epoch_count', 'optimizer_states']
             }
         }
@@ -221,6 +229,7 @@ def convert_archival_to_new_format(
             'angle_range': angle_range,
             'angle_range_source': angle_range_source,
             'time_bounds': time_bounds,
+            'nqubits': nqubits,
             'output_path': output_path
         }
         
@@ -321,6 +330,8 @@ def load_saved_model(
         
         print("\nController Configuration:")
         print("=" * 50)
+        nqubits = metadata.get('nqubits', 2)
+        print(f"  Qubits: {nqubits}")
         print(f"  Time network: {config['time_hidden_layers']} layers x {config['time_hidden_units']} units ({config['time_output_activation']})")
         print(f"  Control network: {config['control_hidden_layers']} layers x {config['control_hidden_units']} units")
         print(f"  Time bounds: [{config['time_bounds'][0]:.4f}, {config['time_bounds'][1]:.4f}] s")
@@ -333,11 +344,19 @@ def load_saved_model(
         angle_range = metadata['angle_range']
         eval_angles = torch.linspace(angle_range[0], angle_range[1], n_eval_angles, device=device)
         
+        # Get nqubits from metadata (default to 2 for backward compatibility)
+        nqubits = metadata.get('nqubits', 2)
+
+        # Determine target gate function based on nqubits and model type
+        # Archival models used standard gate definitions (phase on |11...1>)
+        target_gate_fn = None  # Use default (czphi_gate for 2-qubit, cczphi_gate for 3-qubit)
+        
         # Create trainer for evaluation
         trainer = TimeOptimalTrainer(
             controller=controller,
-            nqubits=2,
-            time_weight=config.get('time_weight', 0.005)
+            nqubits=nqubits,
+            time_weight=config.get('time_weight', 0.005),
+            target_gate_fn=target_gate_fn
         )
         
         print(f"\nEvaluating fidelity on {n_eval_angles} angles...")

@@ -23,6 +23,8 @@ from qneural.neural import (
 )
 
 
+@pytest.mark.slow
+@pytest.mark.integration
 def test_rk4_vs_dopri5_speed():
     """Compare training speed with rk4 vs dopri5."""
     print("\n" + "="*60)

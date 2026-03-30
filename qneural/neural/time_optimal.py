@@ -222,16 +222,15 @@ class TimeOptimalController(nn.Module):
         normalized_time = self.time_predictor(angle)  # [batch, 1]
 
         # Step 2: Scale to physical time bounds
-        # time_bounds are in units of 1/rabi_max, convert to seconds
-        t_min_normalized, t_max_normalized = self.time_bounds
-        t_min = t_min_normalized / self.rabi_max  # Convert to seconds
-        t_max = t_max_normalized / self.rabi_max  # Convert to seconds
+        # IMPORTANT: time_bounds are stored directly as used in training
+        # (in archival, these were in units of 1/rabi_max but used directly)
+        t_min, t_max = self.time_bounds
 
         if self.time_output_activation == 'tanh':
-            # [-1, 1] → [t_min, t_max] in seconds
+            # [-1, 1] → [t_min, t_max]
             gate_time = 0.5 * (normalized_time + 1) * (t_max - t_min) + t_min
         else:
-            # [0, 1] → [t_min, t_max] in seconds
+            # [0, 1] → [t_min, t_max]
             gate_time = normalized_time * (t_max - t_min) + t_min
         
         self._last_predicted_time = gate_time
@@ -324,16 +323,21 @@ class TimeOptimalController(nn.Module):
         Callable
             Function detuning(t) returning detuning at time t
         """
+        # Ensure 3D shape [batch, n_time_steps, 1]
+        if detuning_normalized.dim() == 2:
+            detuning_normalized = detuning_normalized.unsqueeze(0)
+
         # Scale to physical range
         d_min, d_max = self.detuning_range
         detuning_values = detuning_normalized * (d_max - d_min) + d_min  # [batch, n_time_steps, 1]
-        
-        batch_size = detuning_values.shape[0]
+
+        pulse_batch_size = detuning_values.shape[0]
         step_size = gate_time / self.n_time_steps  # [batch, 1] or scalar
-        
+        n_time_steps_captured = self.n_time_steps  # Capture for closure
+
         # Precompute the off-resonant value as a buffer
         off_resonant_val = torch.tensor(20.0 * self.rabi_max, device=detuning_values.device)
-        
+
         def detuning_pulse(t):
             """
             Piecewise-constant detuning pulse.
@@ -347,7 +351,7 @@ class TimeOptimalController(nn.Module):
                 device = detuning_values.device
                 t = torch.tensor(t, device=device)
 
-            if batch_size == 1:
+            if pulse_batch_size == 1:
                 # Scalar case
                 if t >= gate_time.item():
                     return off_resonant_val
@@ -358,18 +362,18 @@ class TimeOptimalController(nn.Module):
                 # Batched case
                 # Each batch element has step_size: [batch, 1]
                 # t is scalar, so t / step_size gives [batch, 1]
-                result = torch.full((batch_size, 1), 20.0 * self.rabi_max, device=device)
+                result = torch.full((pulse_batch_size, 1), 20.0 * self.rabi_max, device=device)
 
                 # Compute time indices for each batch element
                 indices = torch.floor(t / step_size).long()  # [batch, 1]
-                indices = torch.clamp(indices, 0, self.n_time_steps - 1).squeeze(-1)  # [batch]
+                indices = torch.clamp(indices, 0, n_time_steps_captured - 1).squeeze(-1)  # [batch]
 
                 # Check which are within gate time
                 within_gate = (t < gate_time).squeeze(-1)  # [batch]
 
                 # For each batch element within gate time, get its detuning value
                 if within_gate.any():
-                    batch_indices = torch.arange(batch_size, device=device)
+                    batch_indices = torch.arange(pulse_batch_size, device=device)
                     within_indices = batch_indices[within_gate]  # Indices of valid batch elements
                     time_indices = indices[within_gate]  # Time indices for those elements
                     values = detuning_values[within_indices, time_indices, 0]  # [n_within]
@@ -504,13 +508,15 @@ class TimeOptimalTrainer:
             amsgrad=True
         )
         
-        # Quantum evolver - use RK4 (not dopri!) following archival
+        # Quantum evolver - use dopri5 with archival tolerances (RK4 causes NaN for 3-qubit!)
         if solver is None:
             self.evolver = create_evolver(
                 nqubits=nqubits,
                 backend='torchdiffeq',
                 n_time_steps=controller.n_time_steps,
-                method='rk4'
+                method='dopri5',
+                rtol=1e-5,
+                atol=1e-5
             )
         else:
             # Wrap solver in QuantumEvolver
@@ -623,13 +629,14 @@ class TimeOptimalTrainer:
         # Forward pass: get times and detuning for entire batch
         gate_times, detuning_normalized = self.controller(angles)  # [batch, 1], [batch, n_steps, 1]
 
-        # Use max gate time for evolution (archival pattern)
+        # Use max gate time for ODE evolution time span (archival pattern)
         max_gate_time = gate_times.max()
 
         # Create batched pulse functions
-        # Note: get_detuning_pulse_fn handles scaling internally
+        # IMPORTANT: Pass individual gate_times (not max) to detuning_fn so each angle
+        # gets its own cutoff. Rabi uses max for all (constant until max).
         rabi_fn = self.controller.get_rabi_pulse_fn(max_gate_time)
-        detuning_fn = self.controller.get_detuning_pulse_fn(detuning_normalized, max_gate_time)
+        detuning_fn = self.controller.get_detuning_pulse_fn(detuning_normalized, gate_times)
 
         # Batched evolution: evolve all angles together
         final_unitaries = self._evolve_batch(
@@ -762,13 +769,16 @@ class TimeOptimalTrainer:
             # H_batch: [batch, 9, 9], y: [batch, 9, 9]
             return -1j * torch.bmm(H_batch, y)
 
-        # Solve ODE for entire batch in ONE call (archival pattern!)
+        # Solve ODE for entire batch in ONE call
+        # Use dopri5 with archival tolerances (RK4 causes NaN for 3-qubit!)
         solution = torchdiffeq.odeint(
             hamiltonian_fn,
             init_batch,
             t_eval,
-            method='rk4'
-        )  # [n_steps, batch, 9, 9]
+            method='dopri5',
+            rtol=1e-5,
+            atol=1e-5
+        )  # [n_steps, batch, full_dim, full_dim]
 
         final_unitaries_full = solution[-1]  # [batch, 9, 9]
 
@@ -783,17 +793,36 @@ class TimeOptimalTrainer:
 
     def _reduce_to_computational(self, unitaries: torch.Tensor, batch_size: int) -> torch.Tensor:
         """
-        Reduce from full 9x9 to computational 4x4 subspace.
+        Reduce from full (3^n)x(3^n) to computational (2^n)x(2^n) subspace.
 
-        Following archival reduce_r_dim_2q_vector pattern.
+        Following archival reduce_r_dim pattern for N qubits.
+        Removes Rydberg states (index 2 in each qubit).
         """
-        # Indices for computational subspace (00, 01, 10, 11)
-        # In full space: 0,1,3,4 (skipping r states)
-        a_to_keep = [0, 1, 3, 4] * 4
-        b_to_keep = [0, 0, 0, 0, 1, 1, 1, 1, 3, 3, 3, 3, 4, 4, 4, 4]
+        # Get indices for computational subspace (no Rydberg states)
+        # Same logic as QuantumEvolver._get_computational_indices()
+        hilbert_dim = 3
+        full_dim = 3 ** self.nqubits
+        comp_dim = 2 ** self.nqubits
+
+        indices_to_keep = []
+        for i in range(full_dim):
+            # Convert index to base-3 representation
+            digits = []
+            n = i
+            for _ in range(self.nqubits):
+                digits.append(n % hilbert_dim)
+                n //= hilbert_dim
+
+            # Keep only if no digit is 2 (Rydberg state)
+            if 2 not in digits:
+                indices_to_keep.append(i)
+
+        # Following archival pattern: a_to_keep repeated, b_to_keep tiled
+        a_to_keep = indices_to_keep * comp_dim
+        b_to_keep = [item for item in indices_to_keep for _ in range(comp_dim)]
 
         # Extract computational subspace
-        reduced = unitaries[:, a_to_keep, b_to_keep].view(batch_size, 4, 4).transpose(1, 2)
+        reduced = unitaries[:, a_to_keep, b_to_keep].view(batch_size, comp_dim, comp_dim).transpose(1, 2)
 
         return reduced
 
@@ -802,21 +831,27 @@ class TimeOptimalTrainer:
         Apply single-qubit phase corrections using batched operations.
 
         Following archival correction_1q pattern with torch.bmm.
+        For N qubits, applies j1^k where k is number of 1s in binary representation.
         """
         batch_size = unitaries.shape[0]
+        comp_dim = 2 ** self.nqubits
 
-        # Extract phase from |01⟩ element (following archival)
+        # Extract phase from |00...01⟩ element (index 1)
         phi_01 = torch.angle(unitaries[:, 1, 1])  # [batch]
 
         # Create correction matrix for each angle
-        identity = torch.eye(4, dtype=torch.cfloat, device=self.device)
-        correction_batch = identity.unsqueeze(0).repeat(batch_size, 1, 1)  # [batch, 4, 4]
+        identity = torch.eye(comp_dim, dtype=torch.cfloat, device=self.device)
+        correction_batch = identity.unsqueeze(0).repeat(batch_size, 1, 1)  # [batch, comp_dim, comp_dim]
 
-        # Apply phase corrections
-        phase_factor = torch.exp(-1j * phi_01)
-        correction_batch[:, 1, 1] = phase_factor
-        correction_batch[:, 2, 2] = phase_factor
-        correction_batch[:, 3, 3] = phase_factor ** 2
+        # Apply phase corrections based on number of 1s in binary representation
+        # Following archival pattern: j1^k where k = number of 1s
+        phase_factor = torch.exp(-1j * phi_01)  # [batch]
+
+        for i in range(1, comp_dim):
+            # Count number of 1s in binary representation
+            num_ones = bin(i).count('1')
+            # Apply correction: j1^num_ones for each batch element
+            correction_batch[:, i, i] = phase_factor ** num_ones
 
         # Batched matrix multiplication (archival uses torch.bmm)
         corrected = torch.bmm(correction_batch, unitaries)
@@ -936,36 +971,57 @@ class TimeOptimalTrainer:
     
     def evaluate(self, angles: torch.Tensor) -> Dict:
         """
-        Evaluate controller on given angles.
-        
+        Evaluate controller on given angles using batched evolution.
+
         Returns dict with predicted times, infidelities, etc.
         """
         self.controller.eval()
         angles = angles.to(self.device)
-        
+
+        # Ensure angles has shape [batch, 1]
+        if angles.dim() == 1:
+            angles = angles.unsqueeze(-1)
+
+        batch_size = angles.shape[0]
+
         results = {
             'angles': [],
             'predicted_times': [],
             'infidelities': []
         }
-        
-        with torch.no_grad():
-            for angle in angles:
-                gate_time, detuning = self.controller(angle.unsqueeze(0))
-                
-                rabi_fn = self.controller.get_rabi_pulse_fn(gate_time)
-                detuning_fn = self.controller.get_detuning_pulse_fn(detuning, gate_time)
-                
-                final_U = self._evolve(rabi_fn, detuning_fn, gate_time.item())
-                target_U = self.target_gate_fn(angle.item())
 
-                infidelity = unitary_infidelity(final_U, target_U, nqubits=self.nqubits)
-                
+        with torch.no_grad():
+            # Forward pass: get times and detuning for entire batch
+            gate_times, detuning_normalized = self.controller(angles)
+
+            # Use max gate time for ODE span, but individual gate_times for pulse cutoffs
+            max_gate_time = gate_times.max()
+
+            # Create batched pulse functions with individual cutoffs
+            rabi_fn = self.controller.get_rabi_pulse_fn(max_gate_time)
+            detuning_fn = self.controller.get_detuning_pulse_fn(detuning_normalized, gate_times)
+
+            # Batched evolution
+            final_unitaries = self._evolve_batch(
+                rabi_fn, detuning_fn,
+                max_gate_time.item(),
+                batch_size,
+                apply_corrections=True
+            )
+
+            # Create target gates for entire batch
+            target_unitaries = torch.stack([self.target_gate_fn(angle.item()) for angle in angles])
+
+            # Compute infidelities for batch
+            infidelities = self._compute_batch_infidelity(final_unitaries, target_unitaries)
+
+            # Store results
+            for i, angle in enumerate(angles):
                 results['angles'].append(angle.item())
-                results['predicted_times'].append(gate_time.item())
-                results['infidelities'].append(infidelity.item())
-        
+                results['predicted_times'].append(gate_times[i].item())
+                results['infidelities'].append(infidelities[i].item())
+
         results['mean_infidelity'] = torch.tensor(results['infidelities']).mean().item()
         results['mean_time'] = torch.tensor(results['predicted_times']).mean().item()
-        
+
         return results
