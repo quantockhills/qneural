@@ -28,8 +28,8 @@ While initially focused on neural network-based pulse optimization for neutral a
 ### Current Capabilities ✅
 
 #### Quantum Control
-- **High-fidelity gates**: Achieves >99.9% fidelity on two-qubit CZ gates (validated against published results)
-- **Parametrized gates**: Optimize gate families CZ_φ for arbitrary phase angles φ
+- **Parametrized gates**: Optimize gate families CZ_φ for arbitrary phase angles φ or angles ranges.
+- **High-fidelity gates**: Achieves ~99.9% fidelity on two-qubit CZ_φ and three-qubit CCZ_φ gates for $\phi\in\[0,\pi]$.
 - **Time-optimal synthesis**: Neural networks predict optimal gate times and pulse sequences
 - **Transfer learning**: Warm-start optimization from pre-trained models for faster convergence
 
@@ -37,7 +37,6 @@ While initially focused on neural network-based pulse optimization for neutral a
 - **Rydberg Hamiltonians**: Full quantum dynamics for ground-Rydberg coupling with van der Waals interactions
 - **Differentiable evolution**: Automatic differentiation through ODE solvers (torchdiffeq integration)
 - **Phase corrections**: Automatic single-qubit phase tracking for accurate two-qubit fidelity calculation
-- **Subspace projection**: Efficient 2-qubit computational subspace extraction from full Hilbert space
 
 #### Machine Learning
 - **Neural architectures**: Dual-network design (time predictor + pulse generator) with configurable depth
@@ -48,15 +47,7 @@ While initially focused on neural network-based pulse optimization for neutral a
 #### Analysis & Visualization
 - **Training diagnostics**: Loss curves, fidelity tracking, convergence analysis
 - **Pulse visualization**: Plot optimized control sequences (Rabi, detuning) vs. time
-- **Gate analysis**: Unitary fidelity, infidelity decomposition, gate time vs. angle relationships
-
-### Testing & Stability (Beta v0.5.0)
-
-This is a **beta release**.
-
-**Recommendations**:
-- **Production users**: Wait for v1.0 (full test suite + stability)
-- **Early adopters**: Beta is ready for experimentation and research
+- **Gate analysis**: Unitary fidelity, gate time vs. angle relationships
 
 ### Known Limitations (Beta)
 
@@ -96,57 +87,7 @@ pip install -e ".[dev]"
 
 **Note**: This is a beta release. Install from source is currently the only distribution method. PyPI distribution planned for v1.0.
 
-## Quick Start
-
-### High-Fidelity CZ Gate (Working Example)
-
-```python
-import torch
-import numpy as np
-from qneural.neural import FeedForwardNN, FixedRabiTrainer
-from qneural.gates.rydberg import CZPhiGate
-
-# Setup
-gate = CZPhiGate()
-rabi_max = gate.rabi_max
-
-# Create network (detuning only, fixed rabi at max)
-network = FeedForwardNN(
-    input_dim=2,      # [angle, normalized_time]
-    output_dim=1,     # Detuning only
-    hidden_layers=6,
-    hidden_units=150,
-    weight_scale=1.8  # Critical for good initialization
-)
-
-# Create specialized trainer for fixed-rabi optimization
-trainer = FixedRabiTrainer(
-    network=network,
-    nqubits=2,
-    rabi_max=rabi_max
-)
-
-# Train on CZ gate (π phase)
-history = trainer.train(
-    angles=torch.tensor([np.pi]),
-    gate_time=7.62 / rabi_max,  # Optimal time
-    epochs=500,
-    print_every=50
-)
-
-print(f"Final fidelity: {(1 - history['loss'][-1])*100:.2f}%")
-# Output: Final fidelity: 99.87%
-```
-
-### Key Components
-
-- **`FeedForwardNN`**: Configurable feedforward neural network with Xavier initialization
-- **`FixedRabiTrainer`**: Specialized trainer for detuning-only optimization with fixed Rabi frequency
-- **`CZPhiGate`**: Two-qubit controlled-phase gate implementation with automatic target generation
-- **Phase corrections**: Applied automatically during training for accurate two-qubit fidelity computation
-- **Optimal gate time**: Approximately 7.62/Ω_max for CZ gates on neutral atoms (from published results)
-
-### Examples & Tutorials
+### Quick Start
 
 See the `examples/` directory for complete Jupyter notebook tutorials:
 
