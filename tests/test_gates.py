@@ -85,7 +85,7 @@ class TestCZPhiGate:
         assert torch.allclose(diag[0], torch.tensor(1.0 + 0.0j))
         assert torch.allclose(diag[1], torch.tensor(1.0 + 0.0j))
         assert torch.allclose(diag[2], torch.tensor(1.0 + 0.0j))
-        expected_phase = torch.exp(1.0j * torch.tensor(phi))
+        expected_phase = torch.exp(torch.tensor(1.0j) * phi)
         assert torch.allclose(diag[3], expected_phase)
     
     def test_cz_at_pi(self, czphi_gate):
@@ -153,7 +153,7 @@ class TestCCZPhiGate:
             assert torch.allclose(diag[i], torch.tensor(1.0 + 0.0j))
         
         # Last element should be e^{iφ}
-        expected_phase = torch.exp(1.0j * torch.tensor(phi))
+        expected_phase = torch.exp(torch.tensor(1.0j) * phi)
         assert torch.allclose(diag[7], expected_phase)
     
     def test_ccz_at_pi(self, cczphi_gate):

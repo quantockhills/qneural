@@ -60,12 +60,12 @@ def time_optimal_controller():
     """Time-optimal controller for testing."""
     return TimeOptimalController(
         time_bounds=(3.0, 8.0),
-        n_controls=2,
+        rabi_max=25.13,
         n_time_steps=21,  # Small for testing
         time_hidden_layers=2,
         time_hidden_units=10,
-        pulse_hidden_layers=2,
-        pulse_hidden_units=20
+        control_hidden_layers=2,
+        control_hidden_units=20
     )
 
 
@@ -190,17 +190,17 @@ class TestTimeOptimalController:
     """Tests for TimeOptimalController class."""
     
     def test_outputs_time_and_pulses(self, time_optimal_controller):
-        """Should output both gate time and pulses."""
+        """Should output both gate time and detuning."""
         # Arrange
         angle = torch.tensor([0.5 * torch.pi])
-        
+
         # Act
-        gate_time, pulses = time_optimal_controller(angle)
-        
+        gate_time, detuning = time_optimal_controller(angle)
+
         # Assert
-        assert gate_time.shape == (1,)
-        assert pulses.shape[0] == 1  # Batch size
-        assert pulses.shape[2] == 2  # n_controls
+        assert gate_time.shape == (1, 1)  # [batch, 1]
+        assert detuning.shape[0] == 1  # Batch size
+        assert detuning.shape[2] == 1  # Single detuning control
     
     def test_time_in_bounds(self, time_optimal_controller):
         """Predicted time should be within specified bounds."""
