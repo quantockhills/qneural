@@ -226,24 +226,24 @@ class TestPhaseCorrections:
     """Tests for single-qubit phase corrections."""
     
     def test_correction_removes_diagonal_phases(self):
-        """Should remove phases from diagonal elements."""
+        """Should apply symmetric phase corrections."""
         # Arrange
         gate = CZPhiGate()
-        # Create unitary with random phases on diagonal
-        phases = torch.tensor([0.0, 0.5, 1.0, 1.5])
-        unitary = torch.diag(torch.exp(1.0j * phases))
-        
+        # Create a diagonal unitary (like a CZ_phi gate would be)
+        phi = torch.pi / 3
+        target = gate.get_target_unitary(phi)
+
+        # Add spurious single-qubit phases
+        local_phases = torch.tensor([0.2, 0.3, 0.3, 0.6])  # Note: |01⟩ and |10⟩ same, |11⟩ is 2×
+        unitary = torch.diag(torch.exp(1.0j * local_phases)) @ target
+
         # Act
         corrected = gate.apply_phase_corrections(unitary)
-        
-        # Assert
-        # All diagonal elements should be real and positive
-        diag_corrected = torch.diag(corrected)
-        # First element should be 1 (reference)
-        assert torch.allclose(diag_corrected[0], torch.tensor(1.0 + 0.0j))
-        # Others should have phase removed (relative to first)
-        for i in range(1, 4):
-            assert torch.abs(torch.angle(diag_corrected[i])) < 0.01
+
+        # Assert - should match target up to global phase
+        # (symmetric correction removes single-qubit phases)
+        fidelity = gate.compute_fidelity(corrected, target)
+        assert fidelity > 0.9999  # Very high fidelity after correction
     
     def test_correction_preserves_structure(self):
         """Correction should preserve unitarity."""
@@ -377,19 +377,18 @@ class TestGateIntegration:
         # Arrange
         optimizer = create_czphi_optimizer()
         angle = torch.pi / 4
-        
+
         # Act
         pulses, gate_time = optimizer.generate_pulse(angle)
         final_U = optimizer.evolver.evolve(pulses, gate_time)
-        reduced = optimizer.gate.reduce_to_computational_basis(final_U)
-        corrected = optimizer.gate.apply_phase_corrections(reduced)
+        corrected = optimizer.gate.apply_phase_corrections(final_U)
         target = optimizer.gate.get_target_unitary(angle)
-        
+
         # Assert
         assert len(pulses) == 2  # rabi and detuning
         assert isinstance(gate_time, float)
-        assert final_U.shape == (9, 9)  # Full 3^2 space
-        assert reduced.shape == (4, 4)  # Computational 2^2 space
+        # Evolver already returns computational subspace (4x4 for 2 qubits)
+        assert final_U.shape == (4, 4)  # Computational 2^2 space
         assert corrected.shape == (4, 4)
         assert target.shape == (4, 4)
 

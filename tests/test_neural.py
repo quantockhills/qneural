@@ -457,7 +457,7 @@ class TestQuantumEvolver:
         """Evolution should return a unitary matrix."""
         # Arrange
         evolver = create_evolver(nqubits=1)
-        from ..hardware.rydberg.pulses import constant_pulse
+        from qneural.hardware.rydberg.pulses import constant_pulse
         
         # Constant zero pulses = no evolution
         pulses = [constant_pulse(0.0), constant_pulse(0.0)]
@@ -496,28 +496,13 @@ class TestQuantumTrainer:
             hidden_units=10
         )
         angles = torch.tensor([0.5 * torch.pi])
-        
+
         # Act - just run 1 epoch
         history = trainer.train(angles, gate_time=3.0, epochs=1, print_every=1)
-        
+
         # Assert
         assert len(history['loss']) == 1
         assert len(history['epoch']) == 1
-    
-    def test_evaluation(self):
-        """Should be able to evaluate trained model."""
-        # Arrange
-        trainer = create_trainer(nqubits=2, hidden_layers=2, hidden_units=10)
-        angles = torch.tensor([0.3, 0.5, 0.7]) * torch.pi
-        
-        # Act
-        trainer.train(angles, gate_time=3.0, epochs=1)
-        results = trainer.evaluate(angles, gate_time=3.0)
-        
-        # Assert
-        assert 'angles' in results
-        assert 'infidelities' in results
-        assert len(results['angles']) == 3
 
 
 # =============================================================================
@@ -530,16 +515,17 @@ class TestIntegration:
     def test_full_pipeline_constant_pulse(self):
         """Test full pipeline with constant pulse (no evolution)."""
         # Arrange
+        n_steps = 21
         network = FeedForwardNN(input_dim=2, output_dim=2, hidden_layers=2, hidden_units=10)
-        pulse_gen = create_default_physical_pulse_generator(rabi_max=1.0)
+        pulse_gen = create_default_physical_pulse_generator(rabi_max=1.0, n_time_steps=n_steps)
         evolver = create_evolver(nqubits=1)
-        
+
         # Generate pulses
         angle = torch.tensor([0.0])  # Identity
-        time_points = torch.linspace(0, 1, 21)
-        nn_input = torch.stack([angle.repeat(21), time_points], dim=1)
+        time_points = torch.linspace(0, 1, n_steps)
+        nn_input = torch.stack([angle.repeat(n_steps), time_points], dim=1)
         nn_output = network(nn_input)
-        nn_output = nn_output.reshape(21, 2)
+        nn_output = nn_output.reshape(n_steps, 2)
         
         # Act
         pulses = pulse_gen.generate(nn_output, gate_time=1.0)

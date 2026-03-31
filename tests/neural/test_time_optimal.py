@@ -127,26 +127,23 @@ class TestTimeOptimalControllerForward:
         assert detunings.shape == (10, 101, 1)
         
     def test_time_bounds_respected(self):
-        """Predicted times stay within bounds (in seconds)."""
+        """Predicted times stay within bounds (in normalized Rabi units)."""
         rabi_max = 25.13
+        t_min, t_max = 3.0, 8.5
         controller = TimeOptimalController(
-            time_bounds=(3.0, 8.5),  # In units of 1/rabi_max
+            time_bounds=(t_min, t_max),  # In units of 1/rabi_max (normalized)
             rabi_max=rabi_max,
             n_time_steps=101
         )
-        
-        # Expected range in seconds
-        t_min_sec = 3.0 / rabi_max
-        t_max_sec = 8.5 / rabi_max
-        
+
         # Test multiple random angles
         for _ in range(20):
             angle = torch.rand(1) * 3.14
             gate_time, _ = controller(angle)
-            
-            # gate_time is now in seconds
-            assert gate_time.item() >= t_min_sec
-            assert gate_time.item() <= t_max_sec
+
+            # gate_time is in same units as time_bounds (normalized Rabi units)
+            assert gate_time.item() >= t_min
+            assert gate_time.item() <= t_max
             
     def test_different_activations(self):
         """Both sigmoid and tanh activations work."""
@@ -788,25 +785,22 @@ class TestEdgeCases:
         
     def test_time_bounds_edge_cases(self):
         """Time predictor respects bounds at edges."""
-        # Very narrow bounds in units of 1/rabi_max
+        # Very narrow bounds in units of 1/rabi_max (normalized)
         rabi_max = 25.13
+        t_min, t_max = 5.0, 5.1
         controller = TimeOptimalController(
-            time_bounds=(5.0, 5.1),
+            time_bounds=(t_min, t_max),
             rabi_max=rabi_max,
             n_time_steps=11
         )
-        
-        # Expected range in seconds
-        t_min_sec = 5.0 / rabi_max
-        t_max_sec = 5.1 / rabi_max
-        
+
         for _ in range(10):
             angle = torch.rand(1) * 3.14
             gate_time, _ = controller(angle)
-            
-            # gate_time is in seconds
-            assert gate_time.item() >= t_min_sec
-            assert gate_time.item() <= t_max_sec
+
+            # gate_time is in same units as time_bounds (normalized Rabi units)
+            assert gate_time.item() >= t_min
+            assert gate_time.item() <= t_max
             
     def test_different_nqubits(self):
         """Trainer handles different nqubit counts."""
@@ -868,9 +862,9 @@ class TestPhaseCorrections:
         # Create a unitary with known |01⟩ phase
         phi = 0.5
         U = torch.eye(4, dtype=torch.cfloat)
-        U[1, 1] = torch.exp(1.0j * phi)
-        U[2, 2] = torch.exp(1.0j * phi)
-        U[3, 3] = torch.exp(2.0j * phi)
+        U[1, 1] = torch.exp(torch.tensor(1.0j) * phi)
+        U[2, 2] = torch.exp(torch.tensor(1.0j) * phi)
+        U[3, 3] = torch.exp(torch.tensor(2.0j) * phi)
         
         # Apply correction
         U_corrected = trainer._apply_phase_corrections(U)

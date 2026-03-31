@@ -358,7 +358,7 @@ class ControlledPhaseOptimizer:
                     time_bounds = (3.0, 8.0)
                 self.network = TimeOptimalController(
                     time_bounds=time_bounds,
-                    n_controls=2,
+                    rabi_max=gate.rabi_max,
                     n_time_steps=201
                 )
             else:

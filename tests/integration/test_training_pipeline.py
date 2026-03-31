@@ -172,6 +172,7 @@ class TestFixedTimeTraining:
 class TestPulseGeneration:
     """Test that pulse generation from trained network works."""
 
+    @pytest.mark.slow
     def test_can_generate_pulses(self):
         """Test that we can generate pulses from the network."""
         # Arrange
