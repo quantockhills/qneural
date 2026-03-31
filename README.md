@@ -7,7 +7,7 @@
 
 > ⚠️ **BETA SOFTWARE**: This package is currently in beta (v0.5.0). While the core functionality is validated against published results, APIs may evolve before the stable 1.0 release. We welcome feedback and bug reports via [GitHub Issues](https://github.com/quantockhills/qneural/issues).
 
-A modular Python framework for optimizing quantum control protocols using machine learning, with a focus on high-fidelity gate synthesis for neutral atom quantum computers.
+
 
 **Authors:** Madhav Mohan (Eindhoven University of Technology), Julius de Hond (Pasqal)
 **License:** MIT
