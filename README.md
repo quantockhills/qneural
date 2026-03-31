@@ -14,7 +14,7 @@ A modular Python framework for optimizing quantum control protocols using machin
 
 ## Overview
 
-`qneural` provides a modular toolkit for quantum control optimization using machine learning. Developed during PhD research at Eindhoven University of Technology, this library implements the methods described in our Physical Review Applied publication, which demonstrates state-of-the-art results for parametrized multi-qubit gates on Rydberg atom platforms.
+`qneural` provides a modular toolkit for quantum control optimization using machine learning. Developed initially as part of a research project at Pasqal, this library implements the methods described in our Physical Review Applied publication, which demonstrates state-of-the-art results for parametrized multi-qubit gates on Rydberg atom platforms.
 
 While initially focused on neural network-based pulse optimization for neutral atoms, the framework architecture supports extensibility to:
 
@@ -288,4 +288,4 @@ For questions, collaborations, or support:
 
 ## Acknowledgments
 
-This work was conducted at Eindhoven University of Technology. We thank the quantum computing community for their continued support and feedback.
+This project was conducted at Pasqal, and received funding from the European Union’s Horizon 2020 research and innovation programme via the project 101070144 (EuRyQa) and under the Marie Sklodowska-Curie grant agreement number 955479. We thank the quantum computing community for their continued support and feedback.
