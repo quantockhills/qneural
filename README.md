@@ -2,7 +2,7 @@
 
 ![Tests](https://github.com/quantockhills/qneural/workflows/Tests/badge.svg)
 ![Python Version](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.12-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+![License](https://img.shields.io/badge/license-Apache%202.0-green)
 ![Status](https://img.shields.io/badge/status-beta-yellow)
 
 > ⚠️ **BETA SOFTWARE**: This package is currently in beta (v0.5.0). While the core functionality is validated against published results, APIs may evolve before the stable 1.0 release. We welcome feedback and bug reports via [GitHub Issues](https://github.com/quantockhills/qneural/issues).
