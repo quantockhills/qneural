@@ -10,7 +10,7 @@
 
 
 **Authors:** Madhav Mohan (Eindhoven University of Technology), Julius de Hond (Pasqal)
-**License:** MIT
+**License:** Apache-2.0
 
 ## Overview
 
@@ -197,7 +197,7 @@ pytest tests/  # Run test suite
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache-2.0 License - see the [LICENSE](LICENSE) file for details.
 
 ## Contact
 
