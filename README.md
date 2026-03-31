@@ -52,13 +52,7 @@ While initially focused on neural network-based pulse optimization for neutral a
 
 ### Testing & Stability (Beta v0.5.0)
 
-This is a **beta release**. Test status:
-
-- ✅ **Core Tests**: 166/185 passing (90%)
-- ✅ **Physics Validation**: 18/19 integration tests passing
-- ⏳ **Deferred**: 26 slow integration tests (training convergence)
-
-See [TESTING_SUMMARY.md](TESTING_SUMMARY.md) for full details.
+This is a **beta release**.
 
 **Recommendations**:
 - **Production users**: Wait for v1.0 (full test suite + stability)
@@ -191,24 +185,11 @@ qneural/
 
 ## Documentation
 
-### Active Documentation (`docs/`)
-- **[AGENTS.md](docs/AGENTS.md)** - Coding guidelines and best practices
-- **[STRUCTURE.md](docs/STRUCTURE.md)** - Package architecture and design principles
-- **[VALIDATION_REPORT.md](docs/VALIDATION_REPORT.md)** - Current status and test results (142 tests passing ✓)
+The best way to learn qneural is through the Jupyter notebooks in the `examples/` directory:
+- **[getting_started_2qubit.ipynb](examples/getting_started_2qubit.ipynb)** - Beginner-friendly tutorial for 2-qubit CZ_φ gates
+- **[ccphase_transfer_learning.ipynb](examples/ccphase_transfer_learning.ipynb)** - Advanced 3-qubit CCZ_φ transfer learning
 
-### Development Planning (`planning/`)
-See [planning/README.md](planning/README.md) for:
-- **Active Development** - Features being worked on now
-- **Backlog** - Future ideas and enhancements
-- **Completed** - Archive of finished milestones
-
-Current active plans:
-- [Checkpoint & Resume System](planning/active/checkpoint_resume_plan.md) - Save/resume training
-- [Visualization Tools](planning/active/visualization_analysis.md) - Analysis and plotting
-
-### Project History
-- **[CHANGELOG.md](CHANGELOG.md)** - Detailed history of changes and fixes
-- **Original Migration** - See `planning/completed/` for initial package development notes
+API documentation will be added in v1.0.
 
 ## Validation
 
