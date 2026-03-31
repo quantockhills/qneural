@@ -14,7 +14,7 @@
 
 ## Overview
 
-`qneural` provides a modular toolkit for quantum control optimization using machine learning. Developed initially as part of a research project at Pasqal, this library implements the methods described in our Physical Review Applied publication, which demonstrates state-of-the-art results for parametrized multi-qubit gates on Rydberg atom platforms.
+`` provides a modular toolkit for quantum control optimization using machine learning. Developed initially as part of a research project at Pasqal, this library implements the methods described in our Physical Review Applied publication, which demonstrates state-of-the-art results for parametrized multi-qubit gates on Rydberg atom platforms.
 
 While initially focused on neural network-based pulse optimization for neutral atoms, the framework architecture supports extensibility to:
 
@@ -75,7 +75,7 @@ While initially focused on neural network-based pulse optimization for neutral a
 ### Install from Source (Beta)
 
 ```bash
-git clone https://github.com/yourusername/qneural.git
+git clone https://github.com/quantockhills/.git
 cd qneural
 pip install -e .
 ```
@@ -182,14 +182,14 @@ This paper demonstrates state-of-the-art results for parametrized multi-qubit ga
 We welcome contributions, bug reports, and feedback! This is a beta release and we're actively seeking input from the quantum computing community.
 
 **How to contribute:**
-- **Report bugs**: Open an issue on [GitHub Issues](https://github.com/yourusername/qneural/issues)
+- **Report bugs**: Open an issue on [GitHub Issues](https://github.com/quantockhills/qneural/issues)
 - **Request features**: Describe your use case in an issue
 - **Submit code**: Fork the repository and submit a pull request
 - **Share results**: We'd love to hear about your applications!
 
 **Development setup:**
 ```bash
-git clone https://github.com/yourusername/qneural.git
+git clone https://github.com/quantockhills/qneural.git
 cd qneural
 pip install -e ".[dev]"
 pytest tests/  # Run test suite
@@ -205,7 +205,7 @@ This project is licensed under the Apache-2.0 License - see the [LICENSE](LICENS
 **Julius de Hond** - Pasqal
 
 For questions, collaborations, or support:
-- Open an issue: [GitHub Issues](https://github.com/yourusername/qneural/issues)
+- Open an issue: [GitHub Issues](https://github.com/quantockhills/qneural/issues)
 - Email: madhav.mohan@protonmail.com
 
 ## Acknowledgments
