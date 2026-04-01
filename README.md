@@ -14,7 +14,7 @@
 
 ## Overview
 
-`` provides a modular toolkit for quantum control optimization using machine learning. Developed initially as part of a research project at Pasqal, this library implements the methods described in our Physical Review Applied publication, which demonstrates state-of-the-art results for parametrized multi-qubit gates on Rydberg atom platforms.
+`qneural` provides a modular toolkit for quantum control optimization using machine learning. Developed initially as part of a research project at Pasqal, this library implements the methods described in our Physical Review Applied publication, which demonstrates state-of-the-art results for parametrized multi-qubit gates on Rydberg atom platforms.
 
 While initially focused on neural network-based pulse optimization for neutral atoms, the framework architecture supports extensibility to:
 
