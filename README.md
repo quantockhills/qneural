@@ -75,7 +75,7 @@ While initially focused on neural network-based pulse optimization for neutral a
 ### Install from Source (Beta)
 
 ```bash
-git clone https://github.com/quantockhills/.git
+git clone https://github.com/quantockhills/qneural.git
 cd qneural
 pip install -e .
 ```
