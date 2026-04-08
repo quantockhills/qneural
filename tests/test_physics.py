@@ -9,12 +9,11 @@ Testing methodology: pytest with AAA pattern (Arrange-Act-Assert)
 
 import pytest
 import torch
-import numpy as np
 import sys
 import os
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from qneural.hardware.rydberg import (
     # Pulses
@@ -25,12 +24,10 @@ from qneural.hardware.rydberg import (
     blackman_pulse,
     cutoff_pulse,
     add_pulses,
-    pulse_area,
-    # Hamiltonian
     RydbergHamiltonian,
     create_constant_hamiltonian,
 )
-from qneural.hardware.rydberg.constants import HILBERT_DIM_GG, RABI_DEFAULT
+from qneural.hardware.rydberg.constants import RABI_DEFAULT
 from qneural.core import (
     # Evolution
     schrodinger_evolution,
@@ -45,16 +42,17 @@ from qneural.core import (
 # Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def single_qubit_state():
     """Single qubit in ground state |0⟩."""
-    return basis_tensor('0', dim=3)
+    return basis_tensor("0", dim=3)
 
 
 @pytest.fixture
 def two_qubit_state():
     """Two qubits in ground state |00⟩."""
-    return basis_tensor('00', dim=3)
+    return basis_tensor("00", dim=3)
 
 
 @pytest.fixture
@@ -63,7 +61,7 @@ def constant_hamiltonian_1q():
     return create_constant_hamiltonian(
         nqubits=1,
         rabi_amplitude=0.0,  # No drive
-        detuning_amplitude=0.0  # No detuning
+        detuning_amplitude=0.0,  # No detuning
     )
 
 
@@ -71,15 +69,14 @@ def constant_hamiltonian_1q():
 def constant_hamiltonian_2q():
     """Constant Hamiltonian for 2 qubits."""
     return create_constant_hamiltonian(
-        nqubits=2,
-        rabi_amplitude=0.0,
-        detuning_amplitude=0.0
+        nqubits=2, rabi_amplitude=0.0, detuning_amplitude=0.0
     )
 
 
 # =============================================================================
 # Test Pulses
 # =============================================================================
+
 
 class TestZeroPulse:
     """Tests for zero_pulse function."""
@@ -282,6 +279,7 @@ class TestAddPulses:
 # Test Hamiltonian
 # =============================================================================
 
+
 class TestRydbergHamiltonian:
     """Tests for RydbergHamiltonian class."""
 
@@ -323,10 +321,7 @@ class TestRydbergHamiltonian:
         # Arrange
         pulse = constant_pulse(1.0)
         ham = RydbergHamiltonian(
-            nqubits=2,
-            rabi_pulse=pulse,
-            detuning_pulse=pulse,
-            addressing='global'
+            nqubits=2, rabi_pulse=pulse, detuning_pulse=pulse, addressing="global"
         )
 
         # Act
@@ -343,7 +338,7 @@ class TestRydbergHamiltonian:
                 nqubits=2,
                 rabi_pulse=constant_pulse(1.0),  # Single pulse, not list
                 detuning_pulse=constant_pulse(0.0),
-                addressing='local'
+                addressing="local",
             )
 
     def test_interaction_present_for_2qubits(self):
@@ -394,6 +389,7 @@ class TestRydbergHamiltonian:
 # Test Time Evolution
 # =============================================================================
 
+
 class TestSchrodingerEvolution:
     """Tests for schrodinger_evolution function."""
 
@@ -407,7 +403,7 @@ class TestSchrodingerEvolution:
             single_qubit_state,
             ham,
             t_span=(0.0, 1.0),
-            method='euler'  # Simple method for testing
+            method="euler",  # Simple method for testing
         )
 
         # Assert - state should be unchanged
@@ -420,10 +416,7 @@ class TestSchrodingerEvolution:
         # Create a simple rotation Hamiltonian
         rabi = constant_pulse(2.0 * torch.pi)  # 1 Hz Rabi frequency
         ham = RydbergHamiltonian(
-            nqubits=1,
-            rabi_pulse=rabi,
-            detuning_pulse=zero_pulse,
-            addressing='global'
+            nqubits=1, rabi_pulse=rabi, detuning_pulse=zero_pulse, addressing="global"
         )
 
         # Act
@@ -431,7 +424,7 @@ class TestSchrodingerEvolution:
             single_qubit_state,
             ham,
             t_span=(0.0, 0.25),  # Quarter period
-            method='dopri5'
+            method="dopri5",
         )
 
         # Assert - norm should be preserved
@@ -445,18 +438,12 @@ class TestSchrodingerEvolution:
         omega = 2.0 * torch.pi  # 1 Hz
         rabi = constant_pulse(omega)
         ham = RydbergHamiltonian(
-            nqubits=1,
-            rabi_pulse=rabi,
-            detuning_pulse=zero_pulse,
-            addressing='global'
+            nqubits=1, rabi_pulse=rabi, detuning_pulse=zero_pulse, addressing="global"
         )
 
         # Act - one full period
         result = schrodinger_evolution(
-            single_qubit_state,
-            ham,
-            t_span=(0.0, 1.0),
-            method='dopri5'
+            single_qubit_state, ham, t_span=(0.0, 1.0), method="dopri5"
         )
 
         # Assert - should return close to initial state
@@ -471,10 +458,7 @@ class TestSchrodingerEvolution:
 
         # Act
         result = schrodinger_evolution(
-            two_qubit_state,
-            ham,
-            t_span=(0.0, 0.1),
-            method='euler'
+            two_qubit_state, ham, t_span=(0.0, 0.1), method="euler"
         )
 
         # Assert
@@ -491,7 +475,7 @@ class TestEvolveUnitary:
         U0 = torch.eye(3, dtype=torch.cfloat)
 
         # Act
-        result = evolve_unitary(U0, ham, t_span=(0.0, 1.0), method='euler')
+        result = evolve_unitary(U0, ham, t_span=(0.0, 1.0), method="euler")
 
         # Assert - should still be identity (no evolution)
         assert torch.allclose(result[-1], U0, atol=1e-4)
@@ -501,15 +485,12 @@ class TestEvolveUnitary:
         # Arrange
         rabi = constant_pulse(2.0 * torch.pi)
         ham = RydbergHamiltonian(
-            nqubits=1,
-            rabi_pulse=rabi,
-            detuning_pulse=zero_pulse,
-            addressing='global'
+            nqubits=1, rabi_pulse=rabi, detuning_pulse=zero_pulse, addressing="global"
         )
         U0 = torch.eye(3, dtype=torch.cfloat)
 
         # Act
-        result = evolve_unitary(U0, ham, t_span=(0.0, 0.5), method='dopri5')
+        result = evolve_unitary(U0, ham, t_span=(0.0, 0.5), method="dopri5")
 
         # Assert - check unitarity at each time
         for U in result:
@@ -526,7 +507,7 @@ class TestTimeEvolutionOperator:
         ham = create_constant_hamiltonian(1, 0.0, 0.0)
 
         # Act
-        U = time_evolution_operator(ham, t_span=(0.0, 1.0), method='euler')
+        U = time_evolution_operator(ham, t_span=(0.0, 1.0), method="euler")
 
         # Assert
         assert U.shape == (3, 3)
@@ -579,13 +560,14 @@ class TestEvolveState:
 # Integration Tests
 # =============================================================================
 
+
 class TestPhysicsIntegration:
     """Integration tests combining pulses, Hamiltonian, and evolution."""
 
     def test_full_pipeline_single_qubit(self):
         """Complete pipeline: pulse → Hamiltonian → evolution."""
         # Arrange
-        psi0 = basis_tensor('0', dim=3)
+        psi0 = basis_tensor("0", dim=3)
 
         # Create pulse
         rabi = constant_pulse(2.0 * torch.pi * 1e-3)  # 1 kHz
@@ -593,14 +575,11 @@ class TestPhysicsIntegration:
 
         # Create Hamiltonian
         ham = RydbergHamiltonian(
-            nqubits=1,
-            rabi_pulse=rabi,
-            detuning_pulse=detuning,
-            addressing='global'
+            nqubits=1, rabi_pulse=rabi, detuning_pulse=detuning, addressing="global"
         )
 
         # Act
-        result = schrodinger_evolution(psi0, ham, t_span=(0.0, 1.0), method='dopri5')
+        result = schrodinger_evolution(psi0, ham, t_span=(0.0, 1.0), method="dopri5")
 
         # Assert - state should have evolved and still be normalized
         final_state = result[-1]
@@ -610,18 +589,18 @@ class TestPhysicsIntegration:
     def test_full_pipeline_two_qubit_interaction(self):
         """Two qubits with interaction."""
         # Arrange
-        psi0 = basis_tensor('00', dim=3)
+        psi0 = basis_tensor("00", dim=3)
 
         # Create Hamiltonian with interaction
         ham = create_constant_hamiltonian(
             nqubits=2,
             rabi_amplitude=0.0,  # No drive
-            detuning_amplitude=0.0  # No detuning
+            detuning_amplitude=0.0,  # No detuning
             # But interaction is still present!
         )
 
         # Act - evolve with just interaction
-        result = schrodinger_evolution(psi0, ham, t_span=(0.0, 0.1), method='dopri5')
+        result = schrodinger_evolution(psi0, ham, t_span=(0.0, 0.1), method="dopri5")
 
         # Assert - |00⟩ is eigenstate of interaction, so shouldn't change much
         final_state = result[-1]
@@ -636,15 +615,12 @@ class TestPhysicsIntegration:
         omega_rabi = 2.0 * torch.pi * 1.0  # 1 Hz Rabi frequency
         rabi = constant_pulse(omega_rabi)
         ham = RydbergHamiltonian(
-            nqubits=1,
-            rabi_pulse=rabi,
-            detuning_pulse=zero_pulse,
-            addressing='global'
+            nqubits=1, rabi_pulse=rabi, detuning_pulse=zero_pulse, addressing="global"
         )
 
         # Start from |1⟩ (state 1) to see Rabi oscillations to |r⟩
         # Rabi coupling in Rydberg systems is between |1⟩ and |r⟩
-        psi0 = basis_tensor('1', dim=3)
+        psi0 = basis_tensor("1", dim=3)
 
         # Evolve for half a Rabi period (should flip population from |1⟩ to |r⟩)
         # Full Rabi period = 2π/Ω, so half period = π/Ω = π/(2π*1) = 0.5 seconds
@@ -652,10 +628,7 @@ class TestPhysicsIntegration:
 
         # Act
         result = schrodinger_evolution(
-            psi0,
-            ham,
-            t_span=(0.0, t_half_period),
-            method='dopri5'
+            psi0, ham, t_span=(0.0, t_half_period), method="dopri5"
         )
 
         # Assert - check that |1⟩ population has decreased (transferred to |r⟩)
@@ -669,5 +642,5 @@ class TestPhysicsIntegration:
 # Run Tests
 # =============================================================================
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v', '--tb=short'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "--tb=short"])

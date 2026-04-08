@@ -11,28 +11,24 @@ Following the archival implementation patterns from cphase_optim.ipynb.
 
 import torch
 import torch.nn as nn
-from typing import Optional, Tuple, List, Callable, Dict
-from pathlib import Path
-import time
+from typing import Optional, Tuple, Callable, Dict
 
-from ..core.gates import czphi_gate
-from ..core.metrics import unitary_infidelity
-from .solvers import ODESolver, TorchDiffeqSolver
+from .solvers import ODESolver
 from .evolution import QuantumEvolver, create_evolver
 
 
 class TimeOptimalController(nn.Module):
     """
     Two-network system for time-optimal quantum control.
-    
+
     Architecture:
     1. Time Predictor: angle → normalized_time [0,1]
     2. Control Generator: (angle, time) → detuning values
-    
+
     The time network predicts optimal gate duration, which is fed into
     the control network along with the angle to generate detuning pulses.
     Rabi frequency is held constant at maximum (time-optimal by definition).
-    
+
     Parameters
     ----------
     time_bounds : tuple[float, float]
@@ -40,7 +36,7 @@ class TimeOptimalController(nn.Module):
     rabi_max : float
         Maximum Rabi frequency (held constant)
     detuning_range : tuple[float, float], optional
-        Min and max detuning in same units as rabi_max. 
+        Min and max detuning in same units as rabi_max.
         Defaults to (-2*rabi_max, 2*rabi_max)
     n_time_steps : int
         Number of discretized time steps (default: 301)
@@ -58,7 +54,7 @@ class TimeOptimalController(nn.Module):
         Weight init scale for time network (default: 1.8)
     weight_scale_control : float
         Weight init scale for control network (default: 1.55)
-    
+
     Attributes
     ----------
     time_predictor : nn.Module
@@ -67,7 +63,7 @@ class TimeOptimalController(nn.Module):
         Network generating detuning from (angle, time) pairs
     time_grid : torch.Tensor
         Normalized time grid [0, 1] with n_time_steps points
-    
+
     Examples
     --------
     >>> controller = TimeOptimalController(
@@ -78,7 +74,7 @@ class TimeOptimalController(nn.Module):
     >>> angle = torch.tensor([3.14159])  # CZ gate
     >>> gate_time, detuning = controller(angle)
     """
-    
+
     def __init__(
         self,
         time_bounds: Tuple[float, float] = (3.0, 20.0),  # In units of 1/rabi_max
@@ -89,102 +85,93 @@ class TimeOptimalController(nn.Module):
         time_hidden_units: int = 45,
         control_hidden_layers: int = 10,
         control_hidden_units: int = 300,
-        time_output_activation: str = 'sigmoid',
+        time_output_activation: str = "sigmoid",
         weight_scale_time: float = 1.8,
-        weight_scale_control: float = 1.55
+        weight_scale_control: float = 1.55,
     ):
         super().__init__()
-        
+
         self.time_bounds = time_bounds
         self.rabi_max = rabi_max
         self.n_time_steps = n_time_steps
         self.time_output_activation = time_output_activation
-        
+
         # Default detuning range: ±2*rabi_max
         if detuning_range is None:
             detuning_range = (-2.0 * rabi_max, 2.0 * rabi_max)
         self.detuning_range = detuning_range
-        
+
         # Build networks
         self.time_predictor = self._build_time_predictor(
             time_hidden_layers,
             time_hidden_units,
             time_output_activation,
-            weight_scale_time
+            weight_scale_time,
         )
-        
+
         self.control_generator = self._build_control_generator(
-            control_hidden_layers,
-            control_hidden_units,
-            weight_scale_control
+            control_hidden_layers, control_hidden_units, weight_scale_control
         )
-        
+
         # Fixed normalized time grid [0, 1]
-        self.register_buffer('time_grid', torch.linspace(0, 1, n_time_steps))
-        
+        self.register_buffer("time_grid", torch.linspace(0, 1, n_time_steps))
+
         # Store last prediction
         self._last_predicted_time = None
-    
+
     def _build_time_predictor(
-        self,
-        n_layers: int,
-        n_units: int,
-        output_activation: str,
-        weight_scale: float
+        self, n_layers: int, n_units: int, output_activation: str, weight_scale: float
     ) -> nn.Module:
         """Build time predictor network: angle → normalized_time."""
         layers = []
-        
+
         # Input: angle [batch, 1] → n_units
         layers.append(nn.Linear(1, n_units))
         layers.append(nn.ReLU())
-        
+
         # Hidden layers
         for _ in range(n_layers - 1):
             layers.append(nn.Linear(n_units, n_units))
             layers.append(nn.ReLU())
-        
+
         # Output: n_units → 1
         layers.append(nn.Linear(n_units, 1))
-        
+
         # Output activation
-        if output_activation == 'sigmoid':
+        if output_activation == "sigmoid":
             layers.append(nn.Sigmoid())
-        elif output_activation == 'tanh':
+        elif output_activation == "tanh":
             layers.append(nn.Tanh())
         else:
             raise ValueError(f"Unknown activation: {output_activation}")
-        
+
         network = nn.Sequential(*layers)
         self._initialize_weights(network, weight_scale)
         return network
-    
+
     def _build_control_generator(
-        self,
-        n_layers: int,
-        n_units: int,
-        weight_scale: float
+        self, n_layers: int, n_units: int, weight_scale: float
     ) -> nn.Module:
         """Build control generator: (angle, time) → detuning."""
         layers = []
-        
+
         # Input: [angle, time] → n_units
         layers.append(nn.Linear(2, n_units))
         layers.append(nn.ReLU())
-        
+
         # Hidden layers
         for _ in range(n_layers - 1):
             layers.append(nn.Linear(n_units, n_units))
             layers.append(nn.ReLU())
-        
+
         # Output: detuning only (Rabi is fixed!)
         layers.append(nn.Linear(n_units, 1))
         layers.append(nn.Sigmoid())  # [0, 1], scaled later
-        
+
         network = nn.Sequential(*layers)
         self._initialize_weights(network, weight_scale)
         return network
-    
+
     def _initialize_weights(self, network: nn.Module, scale: float):
         """Initialize with Xavier uniform and optional scaling."""
         for module in network.modules():
@@ -194,16 +181,16 @@ class TimeOptimalController(nn.Module):
                     module.weight.data *= scale
                 if module.bias is not None:
                     nn.init.zeros_(module.bias)
-    
+
     def forward(self, angle: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Generate time-optimal detuning pulses.
-        
+
         Parameters
         ----------
         angle : torch.Tensor
             Gate angle(s), shape [batch] or [batch, 1]
-        
+
         Returns
         -------
         tuple[torch.Tensor, torch.Tensor]
@@ -215,9 +202,9 @@ class TimeOptimalController(nn.Module):
             angle = angle.unsqueeze(0)
         if angle.dim() == 1:
             angle = angle.unsqueeze(-1)
-        
+
         batch_size = angle.shape[0]
-        
+
         # Step 1: Predict normalized time from angle
         normalized_time = self.time_predictor(angle)  # [batch, 1]
 
@@ -226,42 +213,50 @@ class TimeOptimalController(nn.Module):
         # (in archival, these were in units of 1/rabi_max but used directly)
         t_min, t_max = self.time_bounds
 
-        if self.time_output_activation == 'tanh':
+        if self.time_output_activation == "tanh":
             # [-1, 1] → [t_min, t_max]
             gate_time = 0.5 * (normalized_time + 1) * (t_max - t_min) + t_min
         else:
             # [0, 1] → [t_min, t_max]
             gate_time = normalized_time * (t_max - t_min) + t_min
-        
+
         self._last_predicted_time = gate_time
-        
+
         # Step 3: Create scaled time grid
         # time_grid: [n_time_steps] → [batch, n_time_steps]
         time_scaled = self.time_grid.unsqueeze(0) * gate_time  # [batch, n_time_steps]
-        
+
         # Step 4: Prepare (angle, time) pairs for control network
         # Repeat angle for each time step
-        angle_repeated = angle.repeat_interleave(self.n_time_steps, dim=0)  # [batch*n_time_steps, 1]
+        angle_repeated = angle.repeat_interleave(
+            self.n_time_steps, dim=0
+        )  # [batch*n_time_steps, 1]
         time_flat = time_scaled.reshape(-1, 1)  # [batch*n_time_steps, 1]
-        control_inputs = torch.cat([angle_repeated, time_flat], dim=-1)  # [batch*n_time_steps, 2]
-        
+        control_inputs = torch.cat(
+            [angle_repeated, time_flat], dim=-1
+        )  # [batch*n_time_steps, 2]
+
         # Step 5: Generate detuning
-        detuning_normalized = self.control_generator(control_inputs)  # [batch*n_time_steps, 1]
-        detuning_normalized = detuning_normalized.reshape(batch_size, self.n_time_steps, 1)
-        
+        detuning_normalized = self.control_generator(
+            control_inputs
+        )  # [batch*n_time_steps, 1]
+        detuning_normalized = detuning_normalized.reshape(
+            batch_size, self.n_time_steps, 1
+        )
+
         return gate_time, detuning_normalized
-    
+
     def get_rabi_pulse_fn(self, gate_time: torch.Tensor) -> Callable:
         """
         Get constant-then-zero Rabi pulse function.
-        
+
         Following archival pattern: constant at rabi_max until gate_time, then zero.
-        
+
         Parameters
         ----------
         gate_time : torch.Tensor
             Gate time for each batch element [batch, 1] or scalar
-        
+
         Returns
         -------
         Callable
@@ -270,10 +265,10 @@ class TimeOptimalController(nn.Module):
         # Ensure tensor
         if not isinstance(gate_time, torch.Tensor):
             gate_time = torch.tensor(gate_time, dtype=torch.float32)
-        
+
         # Handle batched gate_time
         batch_size = gate_time.numel()
-        
+
         def rabi_pulse(t):
             """Rabi pulse: constant until cutoff, then zero."""
             # Handle both scalar and batched inputs
@@ -282,13 +277,13 @@ class TimeOptimalController(nn.Module):
             else:
                 device = gate_time.device
                 t = torch.tensor(t, device=device)
-            
+
             if batch_size == 1:
                 # Scalar case
                 return torch.where(
                     t <= gate_time.item(),
                     torch.tensor(self.rabi_max, device=device),
-                    torch.tensor(0.0, device=device)
+                    torch.tensor(0.0, device=device),
                 )
             else:
                 # Batched case
@@ -298,26 +293,24 @@ class TimeOptimalController(nn.Module):
                 mask = t > gate_time  # [batch, 1]
                 result[mask] = 0.0
                 return result
-        
+
         return rabi_pulse
-    
+
     def get_detuning_pulse_fn(
-        self,
-        detuning_normalized: torch.Tensor,
-        gate_time: torch.Tensor
+        self, detuning_normalized: torch.Tensor, gate_time: torch.Tensor
     ) -> Callable:
         """
         Get piecewise-constant detuning pulse function.
-        
+
         Following archival list_to_fn_tensor_var_gatetime pattern.
-        
+
         Parameters
         ----------
         detuning_normalized : torch.Tensor
             Normalized detuning [batch, n_time_steps, 1] in [0, 1]
         gate_time : torch.Tensor
             Gate time [batch, 1] or scalar
-        
+
         Returns
         -------
         Callable
@@ -329,14 +322,18 @@ class TimeOptimalController(nn.Module):
 
         # Scale to physical range
         d_min, d_max = self.detuning_range
-        detuning_values = detuning_normalized * (d_max - d_min) + d_min  # [batch, n_time_steps, 1]
+        detuning_values = (
+            detuning_normalized * (d_max - d_min) + d_min
+        )  # [batch, n_time_steps, 1]
 
         pulse_batch_size = detuning_values.shape[0]
         step_size = gate_time / self.n_time_steps  # [batch, 1] or scalar
         n_time_steps_captured = self.n_time_steps  # Capture for closure
 
         # Precompute the off-resonant value as a buffer
-        off_resonant_val = torch.tensor(20.0 * self.rabi_max, device=detuning_values.device)
+        off_resonant_val = torch.tensor(
+            20.0 * self.rabi_max, device=detuning_values.device
+        )
 
         def detuning_pulse(t):
             """
@@ -362,11 +359,15 @@ class TimeOptimalController(nn.Module):
                 # Batched case
                 # Each batch element has step_size: [batch, 1]
                 # t is scalar, so t / step_size gives [batch, 1]
-                result = torch.full((pulse_batch_size, 1), 20.0 * self.rabi_max, device=device)
+                result = torch.full(
+                    (pulse_batch_size, 1), 20.0 * self.rabi_max, device=device
+                )
 
                 # Compute time indices for each batch element
                 indices = torch.floor(t / step_size).long()  # [batch, 1]
-                indices = torch.clamp(indices, 0, n_time_steps_captured - 1).squeeze(-1)  # [batch]
+                indices = torch.clamp(indices, 0, n_time_steps_captured - 1).squeeze(
+                    -1
+                )  # [batch]
 
                 # Check which are within gate time
                 within_gate = (t < gate_time).squeeze(-1)  # [batch]
@@ -374,34 +375,40 @@ class TimeOptimalController(nn.Module):
                 # For each batch element within gate time, get its detuning value
                 if within_gate.any():
                     batch_indices = torch.arange(pulse_batch_size, device=device)
-                    within_indices = batch_indices[within_gate]  # Indices of valid batch elements
-                    time_indices = indices[within_gate]  # Time indices for those elements
-                    values = detuning_values[within_indices, time_indices, 0]  # [n_within]
+                    within_indices = batch_indices[
+                        within_gate
+                    ]  # Indices of valid batch elements
+                    time_indices = indices[
+                        within_gate
+                    ]  # Time indices for those elements
+                    values = detuning_values[
+                        within_indices, time_indices, 0
+                    ]  # [n_within]
                     result[within_gate] = values.unsqueeze(-1)  # [n_within, 1]
 
                 return result
 
         return detuning_pulse
-    
+
     def count_parameters(self) -> Dict[str, int]:
         """Count parameters in each network."""
         time_params = sum(p.numel() for p in self.time_predictor.parameters())
         control_params = sum(p.numel() for p in self.control_generator.parameters())
         return {
-            'time_predictor': time_params,
-            'control_generator': control_params,
-            'total': time_params + control_params
+            "time_predictor": time_params,
+            "control_generator": control_params,
+            "total": time_params + control_params,
         }
 
     def scale_detuning(self, detuning_normalized: torch.Tensor) -> torch.Tensor:
         """
         Scale normalized detuning [0, 1] to physical range.
-        
+
         Parameters
         ----------
         detuning_normalized : torch.Tensor
             Detuning values in [0, 1], shape [..., 1] or [...]
-        
+
         Returns
         -------
         torch.Tensor
@@ -414,10 +421,10 @@ class TimeOptimalController(nn.Module):
 class TimeOptimalTrainer:
     """
     Trainer for time-optimal quantum control with dual optimizers.
-    
+
     Uses separate optimizers for time and control networks with different
     learning rates, following the archival training pattern.
-    
+
     Parameters
     ----------
     controller : TimeOptimalController
@@ -437,7 +444,7 @@ class TimeOptimalTrainer:
     target_gate_fn : Callable[[float], torch.Tensor], optional
         Function that takes an angle and returns target unitary.
         If None, defaults to czphi_gate for 2 qubits, cczphi_gate for 3 qubits.
-    
+
     Attributes
     ----------
     time_optimizer : torch.optim.Optimizer
@@ -446,7 +453,7 @@ class TimeOptimalTrainer:
         Optimizer for control network parameters
     history : dict
         Training history with loss, infidelity, mean_gate_time
-    
+
     Examples
     --------
     >>> controller = TimeOptimalController(time_bounds=(3.0, 8.5), rabi_max=25.13)
@@ -460,7 +467,7 @@ class TimeOptimalTrainer:
     >>> angles = torch.linspace(0.1 * torch.pi, torch.pi, 80)
     >>> history = trainer.train(angles, epochs=1000)
     """
-    
+
     def __init__(
         self,
         controller: TimeOptimalController,
@@ -469,8 +476,8 @@ class TimeOptimalTrainer:
         time_lr: float = 1e-5,
         control_lr: float = 1e-4,
         solver: Optional[ODESolver] = None,
-        device: str = 'cpu',
-        target_gate_fn: Optional[Callable] = None
+        device: str = "cpu",
+        target_gate_fn: Optional[Callable] = None,
     ):
         self.controller = controller.to(device)
         self.nqubits = nqubits
@@ -481,9 +488,11 @@ class TimeOptimalTrainer:
         if target_gate_fn is None:
             if nqubits == 2:
                 from ..core.gates import czphi_gate
+
                 self.target_gate_fn = czphi_gate
             elif nqubits == 3:
                 from ..core.gates import cczphi_gate
+
                 self.target_gate_fn = cczphi_gate
             else:
                 raise ValueError(
@@ -492,49 +501,39 @@ class TimeOptimalTrainer:
                 )
         else:
             self.target_gate_fn = target_gate_fn
-        
+
         # Separate optimizers with archival settings
         self.time_optimizer = torch.optim.Adam(
-            controller.time_predictor.parameters(),
-            lr=time_lr,
-            eps=1e-5,
-            amsgrad=True
+            controller.time_predictor.parameters(), lr=time_lr, eps=1e-5, amsgrad=True
         )
-        
+
         self.control_optimizer = torch.optim.Adam(
             controller.control_generator.parameters(),
             lr=control_lr,
             eps=1e-5,
-            amsgrad=True
+            amsgrad=True,
         )
-        
+
         # Quantum evolver - use dopri5 with archival tolerances (RK4 causes NaN for 3-qubit!)
         if solver is None:
             self.evolver = create_evolver(
                 nqubits=nqubits,
-                backend='torchdiffeq',
+                backend="torchdiffeq",
                 n_time_steps=controller.n_time_steps,
-                method='dopri5',
+                method="dopri5",
                 rtol=1e-5,
-                atol=1e-5
+                atol=1e-5,
             )
         else:
             # Wrap solver in QuantumEvolver
             self.evolver = QuantumEvolver(
-                nqubits=nqubits,
-                solver=solver,
-                n_time_steps=controller.n_time_steps
+                nqubits=nqubits, solver=solver, n_time_steps=controller.n_time_steps
             )
-        
+
         # Training history
-        self.history = {
-            'epoch': [],
-            'loss': [],
-            'infidelity': [],
-            'mean_gate_time': []
-        }
+        self.history = {"epoch": [], "loss": [], "infidelity": [], "mean_gate_time": []}
         self.current_epoch = 0
-    
+
     def train(
         self,
         angles: torch.Tensor,
@@ -542,7 +541,7 @@ class TimeOptimalTrainer:
         print_every: int = 50,
         save_path: Optional[str] = None,
         angle_range: Optional[Tuple[float, float]] = None,
-        resample_every: int = 25
+        resample_every: int = 25,
     ) -> Dict:
         """
         Train the time-optimal controller.
@@ -568,7 +567,7 @@ class TimeOptimalTrainer:
             Training history
         """
         angles = angles.to(self.device)
-        best_loss = float('inf')
+        best_loss = float("inf")
         batch_size = len(angles)
 
         for epoch in range(epochs):
@@ -576,25 +575,32 @@ class TimeOptimalTrainer:
 
             # Resample angles (archival pattern)
             if angle_range is not None and epoch % resample_every == 0:
-                angles = torch.rand(batch_size, 1, device=self.device) * \
-                        (angle_range[1] - angle_range[0]) + angle_range[0]
+                angles = (
+                    torch.rand(batch_size, 1, device=self.device)
+                    * (angle_range[1] - angle_range[0])
+                    + angle_range[0]
+                )
 
             # Training step
             loss, metrics = self._train_step(angles)
 
             # Update history
-            self.history['epoch'].append(epoch)
-            self.history['loss'].append(loss)
-            self.history['infidelity'].append(metrics['infidelity'])
-            self.history['mean_gate_time'].append(metrics['mean_gate_time'])
+            self.history["epoch"].append(epoch)
+            self.history["loss"].append(loss)
+            self.history["infidelity"].append(metrics["infidelity"])
+            self.history["mean_gate_time"].append(metrics["mean_gate_time"])
 
             # Print progress
             if epoch % print_every == 0:
                 # Convert gate time to normalized Rabi units for display (archival pattern)
-                mean_time_normalized = metrics['mean_gate_time'] * self.controller.rabi_max
-                print(f"Epoch {epoch}: Loss = {loss:.6f}, "
-                      f"Infidelity = {metrics['infidelity']:.6f}, "
-                      f"Mean Time = {mean_time_normalized:.4f}")
+                mean_time_normalized = (
+                    metrics["mean_gate_time"] * self.controller.rabi_max
+                )
+                print(
+                    f"Epoch {epoch}: Loss = {loss:.6f}, "
+                    f"Infidelity = {metrics['infidelity']:.6f}, "
+                    f"Mean Time = {mean_time_normalized:.4f}"
+                )
 
             # Save best model
             if save_path and loss < best_loss:
@@ -602,7 +608,7 @@ class TimeOptimalTrainer:
                 self.save_checkpoint(save_path)
 
         return self.history
-    
+
     def _train_step(self, angles: torch.Tensor) -> Tuple[float, Dict]:
         """
         Single training step with dual optimizers.
@@ -627,7 +633,9 @@ class TimeOptimalTrainer:
         batch_size = angles.shape[0]
 
         # Forward pass: get times and detuning for entire batch
-        gate_times, detuning_normalized = self.controller(angles)  # [batch, 1], [batch, n_steps, 1]
+        gate_times, detuning_normalized = self.controller(
+            angles
+        )  # [batch, 1], [batch, n_steps, 1]
 
         # Use max gate time for ODE evolution time span (archival pattern)
         max_gate_time = gate_times.max()
@@ -636,18 +644,23 @@ class TimeOptimalTrainer:
         # IMPORTANT: Pass individual gate_times (not max) to detuning_fn so each angle
         # gets its own cutoff. Rabi uses max for all (constant until max).
         rabi_fn = self.controller.get_rabi_pulse_fn(max_gate_time)
-        detuning_fn = self.controller.get_detuning_pulse_fn(detuning_normalized, gate_times)
+        detuning_fn = self.controller.get_detuning_pulse_fn(
+            detuning_normalized, gate_times
+        )
 
         # Batched evolution: evolve all angles together
         final_unitaries = self._evolve_batch(
-            rabi_fn, detuning_fn,
+            rabi_fn,
+            detuning_fn,
             max_gate_time.item(),
             batch_size,
-            apply_corrections=True
+            apply_corrections=True,
         )
 
         # Create target gates for entire batch
-        target_unitaries = torch.stack([self.target_gate_fn(angle.item()) for angle in angles])
+        target_unitaries = torch.stack(
+            [self.target_gate_fn(angle.item()) for angle in angles]
+        )
 
         # Batched infidelity computation
         infidelities = self._compute_batch_infidelity(final_unitaries, target_unitaries)
@@ -665,20 +678,20 @@ class TimeOptimalTrainer:
         self.control_optimizer.step()
 
         metrics = {
-            'loss': total_loss.item(),
-            'infidelity': mean_infidelity.item(),
-            'mean_gate_time': mean_gate_time.item()
+            "loss": total_loss.item(),
+            "infidelity": mean_infidelity.item(),
+            "mean_gate_time": mean_gate_time.item(),
         }
 
         return total_loss.item(), metrics
-    
+
     def _evolve_batch(
         self,
         rabi_fn: Callable,
         detuning_fn: Callable,
         gate_time: float,
         batch_size: int,
-        apply_corrections: bool = True
+        apply_corrections: bool = True,
     ) -> torch.Tensor:
         """
         Batched quantum evolution for multiple angles.
@@ -716,17 +729,19 @@ class TimeOptimalTrainer:
             nqubits=self.nqubits,
             rabi_pulse=dummy_rabi,
             detuning_pulse=dummy_detuning,
-            addressing='global',
-            device=self.device
+            addressing="global",
+            device=self.device,
         )
 
         # Batched initial state: identity for each angle
-        hilbert_dim = 3 ** self.nqubits  # 9 for 2 qubits with 0,1,r
+        hilbert_dim = 3**self.nqubits  # 9 for 2 qubits with 0,1,r
         init_matrix = torch.eye(hilbert_dim, dtype=torch.cfloat, device=self.device)
         init_batch = init_matrix.unsqueeze(0).repeat(batch_size, 1, 1)  # [batch, 9, 9]
 
         # Time array
-        t_eval = torch.linspace(0.0, gate_time, self.controller.n_time_steps, device=self.device)
+        t_eval = torch.linspace(
+            0.0, gate_time, self.controller.n_time_steps, device=self.device
+        )
 
         # Create batched Hamiltonian function following archival pattern
         def hamiltonian_fn(t, y):
@@ -748,8 +763,13 @@ class TimeOptimalTrainer:
 
             # Build batched Hamiltonian: [batch, 9, 9]
             # Start with zeros for each batch element
-            H_batch = torch.zeros(batch_size, hilbert_dim, hilbert_dim,
-                                 dtype=torch.cfloat, device=self.device)
+            H_batch = torch.zeros(
+                batch_size,
+                hilbert_dim,
+                hilbert_dim,
+                dtype=torch.cfloat,
+                device=self.device,
+            )
 
             # Add terms for each qubit (global addressing: all qubits same pulse)
             for i in range(self.nqubits):
@@ -759,7 +779,9 @@ class TimeOptimalTrainer:
                 H_batch += 0.5 * rabi_batch.unsqueeze(-1) * base_hamiltonian.rabi_ops[i]
 
                 # Detuning term: Δ(t) * n_r, batched
-                H_batch += detuning_batch.unsqueeze(-1) * base_hamiltonian.detuning_ops[i]
+                H_batch += (
+                    detuning_batch.unsqueeze(-1) * base_hamiltonian.detuning_ops[i]
+                )
 
             # Add interaction term (same for all batch elements)
             if base_hamiltonian.interaction_op is not None:
@@ -772,18 +794,15 @@ class TimeOptimalTrainer:
         # Solve ODE for entire batch in ONE call
         # Use dopri5 with archival tolerances (RK4 causes NaN for 3-qubit!)
         solution = torchdiffeq.odeint(
-            hamiltonian_fn,
-            init_batch,
-            t_eval,
-            method='dopri5',
-            rtol=1e-5,
-            atol=1e-5
+            hamiltonian_fn, init_batch, t_eval, method="dopri5", rtol=1e-5, atol=1e-5
         )  # [n_steps, batch, full_dim, full_dim]
 
         final_unitaries_full = solution[-1]  # [batch, 9, 9]
 
         # Reduce to computational subspace [batch, 4, 4]
-        final_unitaries = self._reduce_to_computational(final_unitaries_full, batch_size)
+        final_unitaries = self._reduce_to_computational(
+            final_unitaries_full, batch_size
+        )
 
         # Apply batched corrections
         if apply_corrections:
@@ -791,7 +810,9 @@ class TimeOptimalTrainer:
 
         return final_unitaries
 
-    def _reduce_to_computational(self, unitaries: torch.Tensor, batch_size: int) -> torch.Tensor:
+    def _reduce_to_computational(
+        self, unitaries: torch.Tensor, batch_size: int
+    ) -> torch.Tensor:
         """
         Reduce from full (3^n)x(3^n) to computational (2^n)x(2^n) subspace.
 
@@ -801,8 +822,8 @@ class TimeOptimalTrainer:
         # Get indices for computational subspace (no Rydberg states)
         # Same logic as QuantumEvolver._get_computational_indices()
         hilbert_dim = 3
-        full_dim = 3 ** self.nqubits
-        comp_dim = 2 ** self.nqubits
+        full_dim = 3**self.nqubits
+        comp_dim = 2**self.nqubits
 
         indices_to_keep = []
         for i in range(full_dim):
@@ -822,7 +843,11 @@ class TimeOptimalTrainer:
         b_to_keep = [item for item in indices_to_keep for _ in range(comp_dim)]
 
         # Extract computational subspace
-        reduced = unitaries[:, a_to_keep, b_to_keep].view(batch_size, comp_dim, comp_dim).transpose(1, 2)
+        reduced = (
+            unitaries[:, a_to_keep, b_to_keep]
+            .view(batch_size, comp_dim, comp_dim)
+            .transpose(1, 2)
+        )
 
         return reduced
 
@@ -834,14 +859,16 @@ class TimeOptimalTrainer:
         For N qubits, applies j1^k where k is number of 1s in binary representation.
         """
         batch_size = unitaries.shape[0]
-        comp_dim = 2 ** self.nqubits
+        comp_dim = 2**self.nqubits
 
         # Extract phase from |00...01⟩ element (index 1)
         phi_01 = torch.angle(unitaries[:, 1, 1])  # [batch]
 
         # Create correction matrix for each angle
         identity = torch.eye(comp_dim, dtype=torch.cfloat, device=self.device)
-        correction_batch = identity.unsqueeze(0).repeat(batch_size, 1, 1)  # [batch, comp_dim, comp_dim]
+        correction_batch = identity.unsqueeze(0).repeat(
+            batch_size, 1, 1
+        )  # [batch, comp_dim, comp_dim]
 
         # Apply phase corrections based on number of 1s in binary representation
         # Following archival pattern: j1^k where k = number of 1s
@@ -849,9 +876,9 @@ class TimeOptimalTrainer:
 
         for i in range(1, comp_dim):
             # Count number of 1s in binary representation
-            num_ones = bin(i).count('1')
+            num_ones = bin(i).count("1")
             # Apply correction: j1^num_ones for each batch element
-            correction_batch[:, i, i] = phase_factor ** num_ones
+            correction_batch[:, i, i] = phase_factor**num_ones
 
         # Batched matrix multiplication (archival uses torch.bmm)
         corrected = torch.bmm(correction_batch, unitaries)
@@ -859,9 +886,7 @@ class TimeOptimalTrainer:
         return corrected
 
     def _compute_batch_infidelity(
-        self,
-        achieved: torch.Tensor,
-        target: torch.Tensor
+        self, achieved: torch.Tensor, target: torch.Tensor
     ) -> torch.Tensor:
         """
         Compute infidelity for batch of unitaries.
@@ -891,7 +916,7 @@ class TimeOptimalTrainer:
         rabi_fn: Callable,
         detuning_fn: Callable,
         gate_time: float,
-        apply_corrections: bool = True
+        apply_corrections: bool = True,
     ) -> torch.Tensor:
         """
         Evolve quantum system with given pulses using QuantumEvolver.
@@ -917,58 +942,68 @@ class TimeOptimalTrainer:
         # Use QuantumEvolver which handles all the details
         pulses = [rabi_fn, detuning_fn]
         final_unitary = self.evolver.evolve(
-            pulses,
-            gate_time,
-            apply_corrections=apply_corrections
+            pulses, gate_time, apply_corrections=apply_corrections
         )
 
         return final_unitary
-    
+
     def save_checkpoint(self, path: str, metadata: Optional[dict] = None):
         """Save both networks and optimizers."""
         checkpoint = {
-            'time_network_state_dict': self.controller.time_predictor.state_dict(),
-            'control_network_state_dict': self.controller.control_generator.state_dict(),
-            'time_optimizer_state_dict': self.time_optimizer.state_dict(),
-            'control_optimizer_state_dict': self.control_optimizer.state_dict(),
-            'history': self.history,
-            'epoch': self.current_epoch,
-            'time_weight': self.time_weight,
-            'controller_config': {
-                'time_bounds': self.controller.time_bounds,
-                'rabi_max': self.controller.rabi_max,
-                'detuning_range': self.controller.detuning_range,
-                'n_time_steps': self.controller.n_time_steps,
-                'time_hidden_layers': len([l for l in self.controller.time_predictor if isinstance(l, nn.Linear)]),
-                'time_hidden_units': self.controller.time_predictor[0].out_features,
-                'control_hidden_layers': len([l for l in self.controller.control_generator if isinstance(l, nn.Linear)]),
-                'control_hidden_units': self.controller.control_generator[0].out_features,
-                'time_output_activation': self.controller.time_output_activation,
+            "time_network_state_dict": self.controller.time_predictor.state_dict(),
+            "control_network_state_dict": self.controller.control_generator.state_dict(),
+            "time_optimizer_state_dict": self.time_optimizer.state_dict(),
+            "control_optimizer_state_dict": self.control_optimizer.state_dict(),
+            "history": self.history,
+            "epoch": self.current_epoch,
+            "time_weight": self.time_weight,
+            "controller_config": {
+                "time_bounds": self.controller.time_bounds,
+                "rabi_max": self.controller.rabi_max,
+                "detuning_range": self.controller.detuning_range,
+                "n_time_steps": self.controller.n_time_steps,
+                "time_hidden_layers": len(
+                    [
+                        l
+                        for l in self.controller.time_predictor
+                        if isinstance(l, nn.Linear)
+                    ]
+                ),
+                "time_hidden_units": self.controller.time_predictor[0].out_features,
+                "control_hidden_layers": len(
+                    [
+                        l
+                        for l in self.controller.control_generator
+                        if isinstance(l, nn.Linear)
+                    ]
+                ),
+                "control_hidden_units": self.controller.control_generator[
+                    0
+                ].out_features,
+                "time_output_activation": self.controller.time_output_activation,
             },
-            'metadata': metadata or {}
+            "metadata": metadata or {},
         }
         torch.save(checkpoint, path)
-    
+
     def load_checkpoint(self, path: str):
         """Load both networks and optimizers."""
         checkpoint = torch.load(path, map_location=self.device)
         self.controller.time_predictor.load_state_dict(
-            checkpoint['time_network_state_dict']
+            checkpoint["time_network_state_dict"]
         )
         self.controller.control_generator.load_state_dict(
-            checkpoint['control_network_state_dict']
+            checkpoint["control_network_state_dict"]
         )
-        self.time_optimizer.load_state_dict(
-            checkpoint['time_optimizer_state_dict']
-        )
+        self.time_optimizer.load_state_dict(checkpoint["time_optimizer_state_dict"])
         self.control_optimizer.load_state_dict(
-            checkpoint['control_optimizer_state_dict']
+            checkpoint["control_optimizer_state_dict"]
         )
-        self.history = checkpoint['history']
-        self.current_epoch = checkpoint['epoch']
-        if 'time_weight' in checkpoint:
-            self.time_weight = checkpoint['time_weight']
-    
+        self.history = checkpoint["history"]
+        self.current_epoch = checkpoint["epoch"]
+        if "time_weight" in checkpoint:
+            self.time_weight = checkpoint["time_weight"]
+
     def evaluate(self, angles: torch.Tensor) -> Dict:
         """
         Evaluate controller on given angles using batched evolution.
@@ -984,11 +1019,7 @@ class TimeOptimalTrainer:
 
         batch_size = angles.shape[0]
 
-        results = {
-            'angles': [],
-            'predicted_times': [],
-            'infidelities': []
-        }
+        results = {"angles": [], "predicted_times": [], "infidelities": []}
 
         with torch.no_grad():
             # Forward pass: get times and detuning for entire batch
@@ -999,29 +1030,36 @@ class TimeOptimalTrainer:
 
             # Create batched pulse functions with individual cutoffs
             rabi_fn = self.controller.get_rabi_pulse_fn(max_gate_time)
-            detuning_fn = self.controller.get_detuning_pulse_fn(detuning_normalized, gate_times)
+            detuning_fn = self.controller.get_detuning_pulse_fn(
+                detuning_normalized, gate_times
+            )
 
             # Batched evolution
             final_unitaries = self._evolve_batch(
-                rabi_fn, detuning_fn,
+                rabi_fn,
+                detuning_fn,
                 max_gate_time.item(),
                 batch_size,
-                apply_corrections=True
+                apply_corrections=True,
             )
 
             # Create target gates for entire batch
-            target_unitaries = torch.stack([self.target_gate_fn(angle.item()) for angle in angles])
+            target_unitaries = torch.stack(
+                [self.target_gate_fn(angle.item()) for angle in angles]
+            )
 
             # Compute infidelities for batch
-            infidelities = self._compute_batch_infidelity(final_unitaries, target_unitaries)
+            infidelities = self._compute_batch_infidelity(
+                final_unitaries, target_unitaries
+            )
 
             # Store results
             for i, angle in enumerate(angles):
-                results['angles'].append(angle.item())
-                results['predicted_times'].append(gate_times[i].item())
-                results['infidelities'].append(infidelities[i].item())
+                results["angles"].append(angle.item())
+                results["predicted_times"].append(gate_times[i].item())
+                results["infidelities"].append(infidelities[i].item())
 
-        results['mean_infidelity'] = torch.tensor(results['infidelities']).mean().item()
-        results['mean_time'] = torch.tensor(results['predicted_times']).mean().item()
+        results["mean_infidelity"] = torch.tensor(results["infidelities"]).mean().item()
+        results["mean_time"] = torch.tensor(results["predicted_times"]).mean().item()
 
         return results

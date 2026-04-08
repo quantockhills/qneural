@@ -13,4 +13,4 @@ from .torch_backend import TorchBackend
 # Default backend
 backend = TorchBackend()
 
-__all__ = ['backend', 'TorchBackend']
+__all__ = ["backend", "TorchBackend"]

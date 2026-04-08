@@ -17,7 +17,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from qneural.neural.time_optimal import TimeOptimalTrainer, TimeOptimalController
-from qneural.core.gates import czphi_gate
 
 
 @pytest.mark.slow
@@ -29,13 +28,16 @@ def test_batched_trainer():
     print("=" * 80)
 
     # Setup (matching archival hyperparameters)
-    device = torch.device('cpu')
+    device = torch.device("cpu")
     rabi_max = 2 * torch.pi * 4.0  # MHz
     batch_size = 80
 
     # Time bounds in normalized units [3.0, 8.5] converted to seconds
     time_bounds_normalized = (3.0, 8.5)
-    time_bounds = (time_bounds_normalized[0] / rabi_max, time_bounds_normalized[1] / rabi_max)
+    time_bounds = (
+        time_bounds_normalized[0] / rabi_max,
+        time_bounds_normalized[1] / rabi_max,
+    )
 
     # Create controller
     print("\n1. Creating TimeOptimalController...")
@@ -45,9 +47,11 @@ def test_batched_trainer():
         time_hidden_layers=3,
         time_hidden_units=45,
         control_hidden_layers=10,
-        control_hidden_units=300
+        control_hidden_units=300,
     )
-    print(f"   ✓ Created controller with time network [3×45] and control network [10×300]")
+    print(
+        "   ✓ Created controller with time network [3×45] and control network [10×300]"
+    )
 
     # Create trainer
     print("\n2. Creating TimeOptimalTrainer...")
@@ -57,13 +61,16 @@ def test_batched_trainer():
         time_lr=6e-5,
         control_lr=1e-4,
         time_weight=5e-2,
-        device=device
+        device=device,
     )
     print(f"   ✓ Created trainer with {batch_size} batch processing")
 
     # Create initial angles
     angle_range = (0, 2 * torch.pi)
-    angles = torch.rand(batch_size, 1, device=device) * (angle_range[1] - angle_range[0]) + angle_range[0]
+    angles = (
+        torch.rand(batch_size, 1, device=device) * (angle_range[1] - angle_range[0])
+        + angle_range[0]
+    )
     print(f"   ✓ Created {batch_size} random angles in range [0, 2π]")
 
     # Run a few training epochs
@@ -71,19 +78,16 @@ def test_batched_trainer():
     start_time = time.time()
 
     losses = trainer.train(
-        angles=angles,
-        epochs=10,
-        angle_range=angle_range,
-        resample_every=5
+        angles=angles, epochs=10, angle_range=angle_range, resample_every=5
     )
 
     elapsed = time.time() - start_time
-    print(f"   ✓ Completed 10 epochs in {elapsed:.2f}s ({elapsed/10:.3f}s per epoch)")
+    print(f"   ✓ Completed 10 epochs in {elapsed:.2f}s ({elapsed / 10:.3f}s per epoch)")
 
     # Check results
     print("\n4. Checking optimization results...")
-    initial_loss = losses['loss'][0]
-    final_loss = losses['loss'][-1]
+    initial_loss = losses["loss"][0]
+    final_loss = losses["loss"][-1]
     improvement = (initial_loss - final_loss) / initial_loss * 100
 
     print(f"   Initial loss: {initial_loss:.4f}")
@@ -97,14 +101,14 @@ def test_batched_trainer():
         print("   ⚠ Loss did not decrease (may need more epochs)")
 
     # Check infidelity is reasonable
-    final_infidelity = losses['infidelity'][-1]
+    final_infidelity = losses["infidelity"][-1]
     if final_infidelity < 1.0:
         print(f"   ✓ Final infidelity reasonable: {final_infidelity:.4f}")
     else:
         print(f"   ⚠ Final infidelity high: {final_infidelity:.4f}")
 
     # Check gate time is reasonable
-    final_time = losses['mean_gate_time'][-1]
+    final_time = losses["mean_gate_time"][-1]
     print(f"   ✓ Mean gate time: {final_time:.4f}")
 
     print("\n" + "=" * 80)

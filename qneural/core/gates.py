@@ -9,15 +9,13 @@ Functions for creating and analyzing quantum gates, including:
 """
 
 import torch
-import numpy as np
-from ..backend import backend
 from ..config import DTYPE_COMPLEX, DEVICE
-from .operators import rotation_z
 
 
 # =============================================================================
 # Two-Qubit Gates
 # =============================================================================
+
 
 def cz_gate(device=None):
     """
@@ -113,6 +111,7 @@ def czp_gate_stack(phi_tensor, device=None):
 # =============================================================================
 # Three-Qubit Gates
 # =============================================================================
+
 
 def cczphi_gate(phi, device=None):
     """
@@ -243,6 +242,7 @@ def cczp_gate_stack_zzz(phi_tensor, device=None):
 # Single-Qubit Corrections
 # =============================================================================
 
+
 def single_qubit_phase_correction(phi, nqubits=2, device=None):
     """
     Single-qubit Z-rotation correction for multi-qubit gates.
@@ -272,7 +272,7 @@ def single_qubit_phase_correction(phi, nqubits=2, device=None):
     This corrects phases like those from AC Stark shifts or global rotations.
     """
     device = device or DEVICE
-    dim = 2 ** nqubits
+    dim = 2**nqubits
 
     correction = torch.eye(dim, dtype=DTYPE_COMPLEX, device=device)
     if not isinstance(phi, torch.Tensor):
@@ -282,8 +282,8 @@ def single_qubit_phase_correction(phi, nqubits=2, device=None):
     # Apply phase correction based on number of |1⟩ states
     for idx in range(dim):
         # Count number of 1's in binary representation
-        n_ones = bin(idx).count('1')
-        correction[idx, idx] = phase_factor ** n_ones
+        n_ones = bin(idx).count("1")
+        correction[idx, idx] = phase_factor**n_ones
 
     return correction
 
@@ -308,9 +308,11 @@ def single_qubit_phase_correction_batch(phi_batch, nqubits=2, device=None):
     """
     device = device or DEVICE
     batch_size = len(phi_batch)
-    dim = 2 ** nqubits
+    dim = 2**nqubits
 
-    corrections = torch.zeros((batch_size, dim, dim), dtype=DTYPE_COMPLEX, device=device)
+    corrections = torch.zeros(
+        (batch_size, dim, dim), dtype=DTYPE_COMPLEX, device=device
+    )
 
     for i, phi in enumerate(phi_batch):
         corrections[i] = single_qubit_phase_correction(phi, nqubits, device)

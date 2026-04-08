@@ -10,7 +10,7 @@ Supports both global and local addressing schemes.
 """
 
 import torch
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, List, Optional, Union
 from itertools import combinations
 
 from ...backend import backend
@@ -69,10 +69,10 @@ class RydbergHamiltonian:
         nqubits: int,
         rabi_pulse: Union[Callable, List[Callable]],
         detuning_pulse: Union[Callable, List[Callable]],
-        addressing: str = 'global',
+        addressing: str = "global",
         vdd: Optional[float] = None,
         decay_rate: float = 0.0,
-        device: Optional[str] = None
+        device: Optional[str] = None,
     ):
         """
         Initialize Rydberg Hamiltonian.
@@ -117,23 +117,31 @@ class RydbergHamiltonian:
     def _setup_pulses(
         self,
         rabi_pulse: Union[Callable, List[Callable]],
-        detuning_pulse: Union[Callable, List[Callable]]
+        detuning_pulse: Union[Callable, List[Callable]],
     ):
         """Setup pulse functions for each qubit."""
-        if self.addressing == 'global':
+        if self.addressing == "global":
             # Single pulse function for all qubits
             self.rabi_pulses = [rabi_pulse] * self.nqubits
             self.detuning_pulses = [detuning_pulse] * self.nqubits
-        elif self.addressing == 'local':
+        elif self.addressing == "local":
             # Separate pulse for each qubit
             if not isinstance(rabi_pulse, (list, tuple)):
-                raise ValueError("Local addressing requires list of rabi_pulse functions")
+                raise ValueError(
+                    "Local addressing requires list of rabi_pulse functions"
+                )
             if not isinstance(detuning_pulse, (list, tuple)):
-                raise ValueError("Local addressing requires list of detuning_pulse functions")
+                raise ValueError(
+                    "Local addressing requires list of detuning_pulse functions"
+                )
             if len(rabi_pulse) != self.nqubits:
-                raise ValueError(f"Expected {self.nqubits} rabi pulses, got {len(rabi_pulse)}")
+                raise ValueError(
+                    f"Expected {self.nqubits} rabi pulses, got {len(rabi_pulse)}"
+                )
             if len(detuning_pulse) != self.nqubits:
-                raise ValueError(f"Expected {self.nqubits} detuning pulses, got {len(detuning_pulse)}")
+                raise ValueError(
+                    f"Expected {self.nqubits} detuning pulses, got {len(detuning_pulse)}"
+                )
             self.rabi_pulses = rabi_pulse
             self.detuning_pulses = detuning_pulse
         else:
@@ -154,26 +162,24 @@ class RydbergHamiltonian:
         for i in range(self.nqubits):
             # Rabi operator: acts on qubit i
             op_list = [identity] * self.nqubits
-            op_list[i] = local_ops['rabi']
+            op_list[i] = local_ops["rabi"]
             self.rabi_ops.append(tensor_product(op_list))
 
             # Detuning operator: acts on qubit i
             op_list = [identity] * self.nqubits
-            op_list[i] = local_ops['detuning']
+            op_list[i] = local_ops["detuning"]
             self.detuning_ops.append(tensor_product(op_list))
 
         # Build interaction operators (for nqubits >= 2)
         if self.nqubits >= 2:
             self.interaction_op = self._build_interaction_operator(
-                local_ops['detuning'], identity
+                local_ops["detuning"], identity
             )
         else:
             self.interaction_op = None
 
     def _build_interaction_operator(
-        self,
-        n_r_operator: torch.Tensor,
-        identity: torch.Tensor
+        self, n_r_operator: torch.Tensor, identity: torch.Tensor
     ) -> torch.Tensor:
         """
         Build the total Van der Waals interaction operator.
@@ -193,9 +199,9 @@ class RydbergHamiltonian:
             Total interaction operator
         """
         total_interaction = backend.zeros(
-            (HILBERT_DIM_GG ** self.nqubits, HILBERT_DIM_GG ** self.nqubits),
+            (HILBERT_DIM_GG**self.nqubits, HILBERT_DIM_GG**self.nqubits),
             dtype=DTYPE_COMPLEX,
-            device=self.device
+            device=self.device,
         )
 
         # Sum over all pairs
@@ -230,9 +236,9 @@ class RydbergHamiltonian:
             where d = 3^nqubits
         """
         H = backend.zeros(
-            (HILBERT_DIM_GG ** self.nqubits, HILBERT_DIM_GG ** self.nqubits),
+            (HILBERT_DIM_GG**self.nqubits, HILBERT_DIM_GG**self.nqubits),
             dtype=DTYPE_COMPLEX,
-            device=self.device
+            device=self.device,
         )
 
         # Add Rabi and detuning terms for each qubit
@@ -273,7 +279,7 @@ class RydbergHamiltonian:
 
     def get_hilbert_dim(self) -> int:
         """Return the dimension of the Hilbert space."""
-        return HILBERT_DIM_GG ** self.nqubits
+        return HILBERT_DIM_GG**self.nqubits
 
     def get_matrix_shape(self) -> tuple:
         """Return the shape of the Hamiltonian matrix."""
@@ -290,8 +296,8 @@ def create_constant_hamiltonian(
     nqubits: int,
     rabi_amplitude: float,
     detuning_amplitude: float,
-    addressing: str = 'global',
-    device: Optional[str] = None
+    addressing: str = "global",
+    device: Optional[str] = None,
 ) -> RydbergHamiltonian:
     """
     Convenience function to create a Hamiltonian with constant pulses.
@@ -330,5 +336,5 @@ def create_constant_hamiltonian(
         rabi_pulse=constant_pulse(rabi_amplitude, device=device),
         detuning_pulse=constant_pulse(detuning_amplitude, device=device),
         addressing=addressing,
-        device=device
+        device=device,
     )

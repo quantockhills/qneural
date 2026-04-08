@@ -10,12 +10,12 @@ import torch
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from qneural.neural import (
     FeedForwardNN,
     create_default_physical_pulse_generator,
-    create_evolver
+    create_evolver,
 )
 from qneural.hardware.rydberg import RABI_DEFAULT
 
@@ -27,16 +27,13 @@ class TestAutodiffThroughODE:
 
     def test_gradients_exist_after_ode_evolution(self):
         """Test that we can compute gradients through ODE evolution."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("Testing Autodiff Through ODE")
-        print("="*60)
+        print("=" * 60)
 
         # Arrange
         network = FeedForwardNN(
-            input_dim=2,
-            output_dim=2,
-            hidden_layers=2,
-            hidden_units=10
+            input_dim=2, output_dim=2, hidden_layers=2, hidden_units=10
         )
         pulse_gen = create_default_physical_pulse_generator(rabi_max=RABI_DEFAULT)
         evolver = create_evolver(nqubits=2)
@@ -65,31 +62,37 @@ class TestAutodiffThroughODE:
         params_with_grad = [p for p in network.parameters() if p.grad is not None]
         total_params = list(network.parameters())
 
-        print(f"  Parameters with gradients: {len(params_with_grad)}/{len(total_params)}")
+        print(
+            f"  Parameters with gradients: {len(params_with_grad)}/{len(total_params)}"
+        )
 
-        assert len(params_with_grad) > 0, \
+        assert len(params_with_grad) > 0, (
             "No gradients computed! Autodiff through ODE failed."
+        )
 
         # Check gradients are not all zero
         grad_norms = [torch.norm(p.grad).item() for p in params_with_grad]
         max_grad = max(grad_norms)
         print(f"  Max gradient norm: {max_grad:.6e}")
 
-        assert max_grad > 1e-10, \
+        assert max_grad > 1e-10, (
             f"All gradients are zero! Autodiff not working. Max: {max_grad}"
+        )
 
         print("\n✓ Autodiff through ODE works!")
         print("  Gradients flow: NN → Pulses → Hamiltonian → ODE → Loss")
-        print("="*60)
+        print("=" * 60)
 
     def test_gradients_change_with_different_inputs(self):
         """Test that gradients are actually meaningful (not constant)."""
-        print("\n" + "="*60)
+        print("\n" + "=" * 60)
         print("Testing Gradient Variation")
-        print("="*60)
+        print("=" * 60)
 
         # Arrange
-        network = FeedForwardNN(input_dim=2, output_dim=2, hidden_layers=2, hidden_units=10)
+        network = FeedForwardNN(
+            input_dim=2, output_dim=2, hidden_layers=2, hidden_units=10
+        )
         pulse_gen = create_default_physical_pulse_generator(rabi_max=RABI_DEFAULT)
         evolver = create_evolver(nqubits=2)
 
@@ -126,16 +129,19 @@ class TestAutodiffThroughODE:
         print(f"  Angle π/2: loss = {loss2:.6f}")
         print(f"  Gradient difference: {grad_diff:.6e}")
 
-        assert grad_diff > 1e-6, \
+        assert grad_diff > 1e-6, (
             f"Gradients don't change with input! Diff = {grad_diff}"
+        )
 
         print("\n✓ Gradients vary with input (autodiff is meaningful)")
-        print("="*60)
+        print("=" * 60)
 
     def test_backward_pass_doesnt_crash(self):
         """Simplest test: backward() doesn't crash."""
         # Arrange
-        network = FeedForwardNN(input_dim=2, output_dim=2, hidden_layers=1, hidden_units=5)
+        network = FeedForwardNN(
+            input_dim=2, output_dim=2, hidden_layers=1, hidden_units=5
+        )
         pulse_gen = create_default_physical_pulse_generator(rabi_max=RABI_DEFAULT)
         evolver = create_evolver(nqubits=2)
 

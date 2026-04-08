@@ -18,19 +18,16 @@ import sys
 import os
 
 # Add parent directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from qneural.core import (
     # States
     basis_tensor,
     tensor_product,
     number_to_base,
-    reduce_to_computational_basis,
-    # Gates
     czphi_gate,
     czp_gate_stack,
     cczphi_gate,
-    cczphi_gate_zzz,
     single_qubit_phase_correction,
     # Operators
     SIGMA_X,
@@ -50,25 +47,27 @@ from qneural.core import (
 # Fixtures (Reusable Test Data)
 # =============================================================================
 
+
 @pytest.fixture
 def single_qubit_states():
     """Standard single-qubit basis states."""
     return {
-        '0': basis_tensor('0', dim=3),
-        '1': basis_tensor('1', dim=3),
-        'r': basis_tensor('r', dim=3),
+        "0": basis_tensor("0", dim=3),
+        "1": basis_tensor("1", dim=3),
+        "r": basis_tensor("r", dim=3),
     }
 
 
 @pytest.fixture
 def test_angles():
     """Common test angles for gates."""
-    return torch.tensor([0.0, torch.pi/4, torch.pi/2, torch.pi])
+    return torch.tensor([0.0, torch.pi / 4, torch.pi / 2, torch.pi])
 
 
 # =============================================================================
 # Test Basis States
 # =============================================================================
+
 
 class TestBasisStates:
     """Tests for quantum state creation and manipulation."""
@@ -76,7 +75,7 @@ class TestBasisStates:
     def test_single_qubit_state_shape(self):
         """Test that single-qubit states have correct shape."""
         # Arrange & Act
-        ket_0 = basis_tensor('0', dim=3)
+        ket_0 = basis_tensor("0", dim=3)
 
         # Assert
         assert ket_0.shape == (3, 1), "Single qutrit should be 3×1 vector"
@@ -84,33 +83,35 @@ class TestBasisStates:
     def test_single_qubit_state_values(self, single_qubit_states):
         """Test that basis states have amplitude 1 in correct position."""
         # Assert: |0⟩ has amplitude 1 at index 0
-        assert single_qubit_states['0'][0, 0] == 1.0
+        assert single_qubit_states["0"][0, 0] == 1.0
         assert torch.allclose(
-            single_qubit_states['0'][1:],
-            torch.zeros(2, 1, dtype=torch.cfloat)
+            single_qubit_states["0"][1:], torch.zeros(2, 1, dtype=torch.cfloat)
         )
 
         # Assert: |1⟩ has amplitude 1 at index 1
-        assert single_qubit_states['1'][1, 0] == 1.0
+        assert single_qubit_states["1"][1, 0] == 1.0
 
         # Assert: |r⟩ has amplitude 1 at index 2
-        assert single_qubit_states['r'][2, 0] == 1.0
+        assert single_qubit_states["r"][2, 0] == 1.0
 
     def test_two_qubit_state_shape(self):
         """Test two-qubit state dimensions."""
         # Arrange & Act
-        ket_00 = basis_tensor('00', dim=3)
+        ket_00 = basis_tensor("00", dim=3)
 
         # Assert
         assert ket_00.shape == (9, 1), "Two qutrits should be 9×1 vector"
 
-    @pytest.mark.parametrize("state_str,expected_index", [
-        ('00', 0),   # |00⟩
-        ('01', 1),   # |01⟩
-        ('10', 3),   # |10⟩ (base-3: 1*3 + 0 = 3)
-        ('11', 4),   # |11⟩ (base-3: 1*3 + 1 = 4)
-        ('rr', 8),   # |rr⟩ (base-3: 2*3 + 2 = 8)
-    ])
+    @pytest.mark.parametrize(
+        "state_str,expected_index",
+        [
+            ("00", 0),  # |00⟩
+            ("01", 1),  # |01⟩
+            ("10", 3),  # |10⟩ (base-3: 1*3 + 0 = 3)
+            ("11", 4),  # |11⟩ (base-3: 1*3 + 1 = 4)
+            ("rr", 8),  # |rr⟩ (base-3: 2*3 + 2 = 8)
+        ],
+    )
     def test_two_qubit_state_indices(self, state_str, expected_index):
         """Test that two-qubit states have correct computational basis index."""
         # Arrange & Act
@@ -122,12 +123,12 @@ class TestBasisStates:
     def test_tensor_product_matches_direct_construction(self):
         """Test that tensor product gives same result as direct construction."""
         # Arrange
-        ket_0 = basis_tensor('0', dim=3)
-        ket_1 = basis_tensor('1', dim=3)
+        ket_0 = basis_tensor("0", dim=3)
+        ket_1 = basis_tensor("1", dim=3)
 
         # Act
         ket_01_from_product = tensor_product([ket_0, ket_1])
-        ket_01_direct = basis_tensor('01', dim=3)
+        ket_01_direct = basis_tensor("01", dim=3)
 
         # Assert
         assert torch.allclose(ket_01_from_product, ket_01_direct)
@@ -135,16 +136,17 @@ class TestBasisStates:
     def test_number_to_base_conversion(self):
         """Test base conversion utility."""
         # Arrange & Act & Assert
-        assert number_to_base(0, 3) == '0'
-        assert number_to_base(1, 3) == '1'
-        assert number_to_base(2, 3) == 'r'  # 2 → 'r' for Rydberg
-        assert number_to_base(4, 3) == '11'  # 4 in base-3
-        assert number_to_base(8, 3) == 'rr'  # 8 in base-3
+        assert number_to_base(0, 3) == "0"
+        assert number_to_base(1, 3) == "1"
+        assert number_to_base(2, 3) == "r"  # 2 → 'r' for Rydberg
+        assert number_to_base(4, 3) == "11"  # 4 in base-3
+        assert number_to_base(8, 3) == "rr"  # 8 in base-3
 
 
 # =============================================================================
 # Test Gates
 # =============================================================================
+
 
 class TestGateConstruction:
     """Tests for quantum gate construction."""
@@ -184,10 +186,9 @@ class TestGateConstruction:
 
         # Assert: Check off-diagonal elements are zero
         off_diagonal = gate - torch.diag(torch.diag(gate))
-        assert torch.allclose(
-            off_diagonal,
-            torch.zeros_like(off_diagonal)
-        ), "CZ_φ should be diagonal"
+        assert torch.allclose(off_diagonal, torch.zeros_like(off_diagonal)), (
+            "CZ_φ should be diagonal"
+        )
 
     def test_czphi_gate_is_unitary(self):
         """CZ_φ gates should be unitary: U U† = I."""
@@ -250,6 +251,7 @@ class TestGateConstruction:
 # Test Operators
 # =============================================================================
 
+
 class TestOperators:
     """Tests for quantum operators."""
 
@@ -300,6 +302,7 @@ class TestOperators:
 # =============================================================================
 # Test Metrics
 # =============================================================================
+
 
 class TestFidelityMetrics:
     """Tests for fidelity calculations."""
@@ -364,15 +367,14 @@ class TestFidelityMetrics:
 
         # Assert: Check each fidelity individually
         for i in range(len(test_angles)):
-            fidelity_individual = unitary_fidelity(
-                U1_batch[i], U2_batch[i], nqubits=2
-            )
+            fidelity_individual = unitary_fidelity(U1_batch[i], U2_batch[i], nqubits=2)
             assert torch.allclose(fidelities_batch[i], fidelity_individual)
 
 
 # =============================================================================
 # Integration Tests
 # =============================================================================
+
 
 class TestIntegration:
     """Integration tests for combined operations."""
@@ -387,9 +389,7 @@ class TestIntegration:
         # Act
         target_gates = czp_gate_stack(target_angles)
         achieved_gates = czp_gate_stack(achieved_angles)
-        infidelities = unitary_infidelity_batch(
-            achieved_gates, target_gates, nqubits=2
-        )
+        infidelities = unitary_infidelity_batch(achieved_gates, target_gates, nqubits=2)
 
         # Assert
         assert infidelities.shape == (10,)
@@ -403,10 +403,11 @@ class TestIntegration:
 # Property-Based Tests (Mathematical Properties)
 # =============================================================================
 
+
 class TestMathematicalProperties:
     """Tests for mathematical properties that should always hold."""
 
-    @pytest.mark.parametrize("phi", [0.0, 0.5, 1.0, torch.pi/2, torch.pi])
+    @pytest.mark.parametrize("phi", [0.0, 0.5, 1.0, torch.pi / 2, torch.pi])
     def test_czphi_gates_are_unitary(self, phi):
         """All CZ_φ gates should be unitary."""
         # Act
@@ -435,6 +436,6 @@ class TestMathematicalProperties:
 # Run Tests
 # =============================================================================
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run all tests with verbose output
-    pytest.main([__file__, '-v', '--tb=short'])
+    pytest.main([__file__, "-v", "--tb=short"])

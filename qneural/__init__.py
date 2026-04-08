@@ -29,11 +29,10 @@ __authors__ = ["Madhav Mohan", "Julius de Hond"]
 # PyTorch backend (primary backend for now)
 try:
     import torch
+
     BACKEND_AVAILABLE = True
 except ImportError:
-    raise ImportError(
-        "qneural requires PyTorch. Install with: pip install torch"
-    )
+    raise ImportError("qneural requires PyTorch. Install with: pip install torch")
 
 # Configuration
 from . import config

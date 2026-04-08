@@ -18,7 +18,7 @@ import os
 # =============================================================================
 
 # Device selection: 'cpu', 'cuda', or 'mps'
-DEVICE = os.getenv('QNEURAL_DEVICE', 'cpu')
+DEVICE = os.getenv("QNEURAL_DEVICE", "cpu")
 
 # Default dtype for real-valued tensors
 DTYPE_REAL = torch.float32
@@ -31,13 +31,13 @@ DTYPE_COMPLEX = torch.cfloat
 # =============================================================================
 
 # ODE solver defaults
-ODE_SOLVER_DEFAULT = 'dopri5'  # Dormand-Prince adaptive step size solver
-ODE_RTOL_DEFAULT = 1e-6        # Relative tolerance
-ODE_ATOL_DEFAULT = 1e-6        # Absolute tolerance
+ODE_SOLVER_DEFAULT = "dopri5"  # Dormand-Prince adaptive step size solver
+ODE_RTOL_DEFAULT = 1e-6  # Relative tolerance
+ODE_ATOL_DEFAULT = 1e-6  # Absolute tolerance
 
 # Discretization defaults
-TIME_STEPS_DEFAULT = 201       # Number of time discretization points
-ANGLE_BATCH_DEFAULT = 80       # Default batch size for angle sampling
+TIME_STEPS_DEFAULT = 201  # Number of time discretization points
+ANGLE_BATCH_DEFAULT = 80  # Default batch size for angle sampling
 
 # =============================================================================
 # Machine Learning Defaults
@@ -46,12 +46,12 @@ ANGLE_BATCH_DEFAULT = 80       # Default batch size for angle sampling
 # Neural network architecture defaults
 NN_HIDDEN_LAYERS_DEFAULT = 6
 NN_HIDDEN_UNITS_DEFAULT = 150
-NN_ACTIVATION_DEFAULT = 'relu'
-NN_OUTPUT_ACTIVATION_DEFAULT = 'sigmoid'
+NN_ACTIVATION_DEFAULT = "relu"
+NN_OUTPUT_ACTIVATION_DEFAULT = "sigmoid"
 
 # Training defaults
 LEARNING_RATE_DEFAULT = 1e-4
-OPTIMIZER_DEFAULT = 'adam'
+OPTIMIZER_DEFAULT = "adam"
 BATCH_SIZE_DEFAULT = 1
 
 # =============================================================================
@@ -67,6 +67,7 @@ HBAR = 1.054571817e-34  # J·s
 # Utility Functions
 # =============================================================================
 
+
 def set_device(device: str):
     """
     Set the global device for computations.
@@ -77,7 +78,7 @@ def set_device(device: str):
         Device identifier: 'cpu', 'cuda', or 'mps'
     """
     global DEVICE
-    if device not in ['cpu', 'cuda', 'mps']:
+    if device not in ["cpu", "cuda", "mps"]:
         raise ValueError(f"Invalid device: {device}. Must be 'cpu', 'cuda', or 'mps'.")
     DEVICE = device
 
@@ -104,19 +105,22 @@ def set_precision(precision: str):
         Either 'single' (float32) or 'double' (float64)
     """
     global DTYPE_REAL, DTYPE_COMPLEX
-    if precision == 'single':
+    if precision == "single":
         DTYPE_REAL = torch.float32
         DTYPE_COMPLEX = torch.cfloat
-    elif precision == 'double':
+    elif precision == "double":
         DTYPE_REAL = torch.float64
         DTYPE_COMPLEX = torch.cdouble
     else:
-        raise ValueError(f"Invalid precision: {precision}. Must be 'single' or 'double'.")
+        raise ValueError(
+            f"Invalid precision: {precision}. Must be 'single' or 'double'."
+        )
 
 
 # =============================================================================
 # Display Configuration
 # =============================================================================
+
 
 def print_config():
     """Print current configuration settings."""

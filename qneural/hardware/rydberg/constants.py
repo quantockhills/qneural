@@ -55,6 +55,7 @@ HILBERT_DIM_GG = 3
 # Utility Functions
 # =============================================================================
 
+
 def rabi_to_mhz(rabi_angular):
     """
     Convert Rabi frequency from angular units (rad/s) to MHz.

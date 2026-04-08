@@ -10,16 +10,17 @@ Uses torchdiffeq for efficient differentiable ODE solving.
 """
 
 import torch
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Optional, Tuple
 import torchdiffeq as tde
 
 from ..backend import backend
-from ..config import DEVICE, DTYPE_COMPLEX
+from ..config import DTYPE_COMPLEX
 
 
 # =============================================================================
 # Schrödinger Equation Solver
 # =============================================================================
+
 
 def _complex_to_real(z: torch.Tensor) -> torch.Tensor:
     """Convert complex tensor to real representation [..., 2] with [real, imag]."""
@@ -36,10 +37,10 @@ def schrodinger_evolution(
     hamiltonian_fn: Callable[[float], torch.Tensor],
     t_span: Tuple[float, float],
     t_eval: Optional[torch.Tensor] = None,
-    method: str = 'dopri5',
+    method: str = "dopri5",
     rtol: float = 1e-7,
     atol: float = 1e-9,
-    **kwargs
+    **kwargs,
 ) -> torch.Tensor:
     """
     Solve the Schrödinger equation: i dψ/dt = H(t) ψ.
@@ -147,13 +148,7 @@ def schrodinger_evolution(
         t_eval = torch.linspace(t_span[0], t_span[1], 2)
 
     solution_real = tde.odeint(
-        ode_func,
-        initial_real,
-        t_eval,
-        method=method,
-        rtol=rtol,
-        atol=atol,
-        **kwargs
+        ode_func, initial_real, t_eval, method=method, rtol=rtol, atol=atol, **kwargs
     )
 
     # Convert solution back to complex and reshape
@@ -179,8 +174,8 @@ def evolve_unitary(
     hamiltonian_fn: Callable[[float], torch.Tensor],
     t_span: Tuple[float, float],
     t_eval: Optional[torch.Tensor] = None,
-    method: str = 'dopri5',
-    **kwargs
+    method: str = "dopri5",
+    **kwargs,
 ) -> torch.Tensor:
     """
     Evolve a unitary operator under time-dependent Hamiltonian.
@@ -235,13 +230,7 @@ def evolve_unitary(
     if t_eval is None:
         t_eval = torch.linspace(t_span[0], t_span[1], 2)
 
-    solution = tde.odeint(
-        ode_func,
-        y0,
-        t_eval,
-        method=method,
-        **kwargs
-    )
+    solution = tde.odeint(ode_func, y0, t_eval, method=method, **kwargs)
 
     # Reshape back to unitary matrices
     # solution shape: [n_times, d*d]
@@ -255,11 +244,12 @@ def evolve_unitary(
 # Evolution Operators
 # =============================================================================
 
+
 def time_evolution_operator(
     hamiltonian_fn: Callable[[float], torch.Tensor],
     t_span: Tuple[float, float],
-    method: str = 'dopri5',
-    **kwargs
+    method: str = "dopri5",
+    **kwargs,
 ) -> torch.Tensor:
     """
     Compute the time evolution operator U(t) over a time interval.
@@ -294,10 +284,7 @@ def time_evolution_operator(
     return U_t[-1]
 
 
-def evolve_state(
-    initial_state: torch.Tensor,
-    unitary: torch.Tensor
-) -> torch.Tensor:
+def evolve_state(initial_state: torch.Tensor, unitary: torch.Tensor) -> torch.Tensor:
     """
     Evolve a quantum state by applying a unitary operator.
 
@@ -327,21 +314,26 @@ def evolve_state(
         return torch.bmm(unitary, initial_state)
     elif initial_state.dim() == 2 and unitary.dim() == 3:
         # Single state, batched unitaries
-        return torch.bmm(unitary, initial_state.unsqueeze(0).expand(unitary.shape[0], -1, -1))
+        return torch.bmm(
+            unitary, initial_state.unsqueeze(0).expand(unitary.shape[0], -1, -1)
+        )
     else:
-        raise ValueError(f"Shape mismatch: state {initial_state.shape}, unitary {unitary.shape}")
+        raise ValueError(
+            f"Shape mismatch: state {initial_state.shape}, unitary {unitary.shape}"
+        )
 
 
 # =============================================================================
 # Helper Functions
 # =============================================================================
 
+
 def mesolve(
     hamiltonian_fn: Callable[[float], torch.Tensor],
     initial_state: torch.Tensor,
     t_list: torch.Tensor,
-    method: str = 'dopri5',
-    **kwargs
+    method: str = "dopri5",
+    **kwargs,
 ) -> torch.Tensor:
     """
     Master equation solver (wrapper for schrodinger_evolution).
@@ -369,10 +361,5 @@ def mesolve(
     t_span = (t_list[0].item(), t_list[-1].item())
 
     return schrodinger_evolution(
-        initial_state,
-        hamiltonian_fn,
-        t_span,
-        t_eval=t_list,
-        method=method,
-        **kwargs
+        initial_state, hamiltonian_fn, t_span, t_eval=t_list, method=method, **kwargs
     )

@@ -10,8 +10,6 @@ Functions for evaluating the quality of quantum gates:
 
 import torch
 import numpy as np
-from ..backend import backend
-from ..config import DEVICE
 
 
 def unitary_fidelity(U1, U2, dim=2, nqubits=1):
@@ -43,15 +41,15 @@ def unitary_fidelity(U1, U2, dim=2, nqubits=1):
     """
     if U1.dim() == 2:
         # Single pair
-        hilbert_dim = dim ** nqubits
+        hilbert_dim = dim**nqubits
         overlap = torch.trace(torch.matmul(U1.conj().T, U2))
-        fidelity = torch.abs(overlap) ** 2 / (hilbert_dim ** 2)
+        fidelity = torch.abs(overlap) ** 2 / (hilbert_dim**2)
     else:
         # Batch - use original implementation
-        hilbert_dim = dim ** nqubits
-        c = torch.einsum('mij, nji -> mn', U1.mH, U2)
-        g = torch.einsum('mm ->', c ** 2)
-        fidelity = torch.abs(g) / (U1.shape[0] * hilbert_dim ** 2)
+        hilbert_dim = dim**nqubits
+        c = torch.einsum("mij, nji -> mn", U1.mH, U2)
+        g = torch.einsum("mm ->", c**2)
+        fidelity = torch.abs(g) / (U1.shape[0] * hilbert_dim**2)
 
     return fidelity
 
@@ -77,17 +75,17 @@ def unitary_fidelity_batch(U1_batch, U2_batch, nqubits=1):
     torch.Tensor
         Fidelities for each pair, shape [batch_size]
     """
-    d = 2 ** nqubits
+    d = 2**nqubits
 
     # Batch matrix multiplication: U1†  U2
     # U1.conj().transpose(1, 2) gives batch of U1†
     overlap_matrices = torch.bmm(U1_batch.conj().transpose(1, 2), U2_batch)
 
     # Trace of each matrix: einsum for batch trace
-    overlaps = torch.einsum('bii->b', overlap_matrices)
+    overlaps = torch.einsum("bii->b", overlap_matrices)
 
     # Fidelity for each: |Tr(U1† U2)|² / d²
-    fidelities = torch.abs(overlaps) ** 2 / (d ** 2)
+    fidelities = torch.abs(overlaps) ** 2 / (d**2)
 
     return fidelities
 
@@ -182,6 +180,7 @@ def unitary_infidelity_array(U1, U2, dim=2, nqubits=1):
 # Process Fidelity (Alternative Definition)
 # =============================================================================
 
+
 def process_fidelity(U1, U2):
     """
     Compute process fidelity: |⟨U1|U2⟩|² / d².
@@ -208,12 +207,13 @@ def process_fidelity(U1, U2):
     """
     d = U1.shape[0]
     overlap = torch.trace(torch.matmul(U1.conj().T, U2))
-    return torch.abs(overlap) ** 2 / d ** 2
+    return torch.abs(overlap) ** 2 / d**2
 
 
 # =============================================================================
 # Diamond Distance (Advanced)
 # =============================================================================
+
 
 def diamond_distance_estimate(U1, U2):
     """
@@ -240,13 +240,14 @@ def diamond_distance_estimate(U1, U2):
     This is a quick approximation for monitoring during optimization.
     """
     difference = U1 - U2
-    frobenius_norm = torch.norm(difference, p='fro')
+    frobenius_norm = torch.norm(difference, p="fro")
     return frobenius_norm / np.sqrt(2)  # Rough scaling
 
 
 # =============================================================================
 # Utilities
 # =============================================================================
+
 
 def gate_error_rate(fidelity):
     """
@@ -294,5 +295,5 @@ def fidelity_to_gate_error(fidelity, nqubits):
     -----
     This is the standard conversion used in quantum computing benchmarks.
     """
-    d = 2 ** nqubits
+    d = 2**nqubits
     return (d - 1) / d * (1.0 - fidelity)

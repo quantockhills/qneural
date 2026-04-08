@@ -12,7 +12,7 @@ import torch
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from qneural.gates.rydberg import CZPhiGate, ControlledPhaseOptimizer
 from qneural.neural import (
@@ -20,7 +20,7 @@ from qneural.neural import (
     create_default_physical_pulse_generator,
     create_evolver,
     QuantumTrainer,
-    InfidelityLoss
+    InfidelityLoss,
 )
 
 
@@ -31,7 +31,9 @@ class TestFixedTimeTraining:
         """Test that we can create all necessary components."""
         # Arrange & Act
         gate = CZPhiGate()
-        network = FeedForwardNN(input_dim=2, output_dim=2, hidden_layers=2, hidden_units=20)
+        network = FeedForwardNN(
+            input_dim=2, output_dim=2, hidden_layers=2, hidden_units=20
+        )
         pulse_gen = create_default_physical_pulse_generator(rabi_max=gate.rabi_max)
         evolver = create_evolver(nqubits=2)
         loss_fn = InfidelityLoss(nqubits=2)
@@ -41,7 +43,7 @@ class TestFixedTimeTraining:
             nqubits=2,
             loss_fn=loss_fn,
             pulse_generator=pulse_gen,
-            evolver=evolver
+            evolver=evolver,
         )
 
         # Assert
@@ -54,7 +56,9 @@ class TestFixedTimeTraining:
         """Test that training can run for a few epochs without crashing."""
         # Arrange - minimal setup
         gate = CZPhiGate()
-        network = FeedForwardNN(input_dim=2, output_dim=2, hidden_layers=2, hidden_units=20)
+        network = FeedForwardNN(
+            input_dim=2, output_dim=2, hidden_layers=2, hidden_units=20
+        )
         pulse_gen = create_default_physical_pulse_generator(rabi_max=gate.rabi_max)
         evolver = create_evolver(nqubits=2)
         loss_fn = InfidelityLoss(nqubits=2)
@@ -64,7 +68,7 @@ class TestFixedTimeTraining:
             nqubits=2,
             loss_fn=loss_fn,
             pulse_generator=pulse_gen,
-            evolver=evolver
+            evolver=evolver,
         )
 
         # Very minimal training parameters
@@ -76,16 +80,18 @@ class TestFixedTimeTraining:
         history = trainer.train(angles, gate_time, epochs, print_every=1)
 
         # Assert - training completed
-        assert 'loss' in history
-        assert len(history['loss']) == epochs
-        assert all(isinstance(loss, float) for loss in history['loss'])
+        assert "loss" in history
+        assert len(history["loss"]) == epochs
+        assert all(isinstance(loss, float) for loss in history["loss"])
 
     @pytest.mark.slow
     def test_training_improves_infidelity(self):
         """Test that training actually reduces infidelity (loss goes down)."""
         # Arrange
         gate = CZPhiGate()
-        network = FeedForwardNN(input_dim=2, output_dim=2, hidden_layers=3, hidden_units=30)
+        network = FeedForwardNN(
+            input_dim=2, output_dim=2, hidden_layers=3, hidden_units=30
+        )
         pulse_gen = create_default_physical_pulse_generator(rabi_max=gate.rabi_max)
         evolver = create_evolver(nqubits=2)
         loss_fn = InfidelityLoss(nqubits=2)
@@ -95,7 +101,7 @@ class TestFixedTimeTraining:
             nqubits=2,
             loss_fn=loss_fn,
             pulse_generator=pulse_gen,
-            evolver=evolver
+            evolver=evolver,
         )
 
         # Minimal training
@@ -107,16 +113,17 @@ class TestFixedTimeTraining:
         history = trainer.train(angles, gate_time, epochs, print_every=1)
 
         # Assert - loss should generally decrease or at least change
-        initial_loss = history['loss'][0]
-        final_loss = history['loss'][-1]
+        initial_loss = history["loss"][0]
+        final_loss = history["loss"][-1]
 
         # The loss should be different (network is learning something)
         # We don't require it strictly decrease (that depends on random init)
         # but it should change significantly
         loss_changed = abs(final_loss - initial_loss) > 0.01
 
-        assert loss_changed, \
+        assert loss_changed, (
             f"Loss didn't change: initial={initial_loss:.4f}, final={final_loss:.4f}"
+        )
 
         # Print for debugging
         print(f"\n  Initial loss: {initial_loss:.6f}")
@@ -128,7 +135,9 @@ class TestFixedTimeTraining:
         """Test that ControlledPhaseOptimizer wrapper works for fixed-time."""
         # Arrange
         gate = CZPhiGate()
-        network = FeedForwardNN(input_dim=2, output_dim=2, hidden_layers=2, hidden_units=20)
+        network = FeedForwardNN(
+            input_dim=2, output_dim=2, hidden_layers=2, hidden_units=20
+        )
         pulse_gen = create_default_physical_pulse_generator(rabi_max=gate.rabi_max)
         evolver = create_evolver(nqubits=2)
         loss_fn = InfidelityLoss(nqubits=2)
@@ -138,7 +147,7 @@ class TestFixedTimeTraining:
             nqubits=2,
             loss_fn=loss_fn,
             pulse_generator=pulse_gen,
-            evolver=evolver
+            evolver=evolver,
         )
 
         optimizer = ControlledPhaseOptimizer(
@@ -147,26 +156,23 @@ class TestFixedTimeTraining:
             trainer=trainer,
             pulse_generator=pulse_gen,
             evolver=evolver,
-            time_optimal=False
+            time_optimal=False,
         )
 
         # Act - train briefly
         history = optimizer.train(
-            angle_range=(0.5 * torch.pi, torch.pi),
-            n_angles=2,
-            gate_time=5.0,
-            epochs=2
+            angle_range=(0.5 * torch.pi, torch.pi), n_angles=2, gate_time=5.0, epochs=2
         )
 
         # Assert
-        assert 'loss' in history or 'losses' in history  # Check either key
+        assert "loss" in history or "losses" in history  # Check either key
 
         # Try evaluation
         result = optimizer.evaluate(torch.pi)
 
-        assert 'infidelity' in result
-        assert 'gate_time' in result
-        assert result['infidelity'] < 1.0  # Should be a valid infidelity value
+        assert "infidelity" in result
+        assert "gate_time" in result
+        assert result["infidelity"] < 1.0  # Should be a valid infidelity value
 
 
 class TestPulseGeneration:
@@ -177,7 +183,9 @@ class TestPulseGeneration:
         """Test that we can generate pulses from the network."""
         # Arrange
         gate = CZPhiGate()
-        network = FeedForwardNN(input_dim=2, output_dim=2, hidden_layers=2, hidden_units=20)
+        network = FeedForwardNN(
+            input_dim=2, output_dim=2, hidden_layers=2, hidden_units=20
+        )
         pulse_gen = create_default_physical_pulse_generator(rabi_max=gate.rabi_max)
         evolver = create_evolver(nqubits=2)
 
@@ -186,7 +194,7 @@ class TestPulseGeneration:
             network=network,
             pulse_generator=pulse_gen,
             evolver=evolver,
-            time_optimal=False
+            time_optimal=False,
         )
 
         # Act - generate pulses (even without training)

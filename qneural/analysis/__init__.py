@@ -33,19 +33,19 @@ from .quantum_control_plots import (
     plot_detuning_pulses,
     plot_gate_time_vs_angle,
     plot_fidelity_vs_angle,
-    create_optimization_summary
+    create_optimization_summary,
 )
 
 __all__ = [
     # Legacy functions
-    'plot_loss_convergence',
-    'plot_training_summary',
-    'plot_pulses_vs_time',
-    'plot_pulse_comparison',
+    "plot_loss_convergence",
+    "plot_training_summary",
+    "plot_pulses_vs_time",
+    "plot_pulse_comparison",
     # New unified functions
-    'plot_training_progress',
-    'plot_detuning_pulses',
-    'plot_gate_time_vs_angle',
-    'plot_fidelity_vs_angle',
-    'create_optimization_summary',
+    "plot_training_progress",
+    "plot_detuning_pulses",
+    "plot_gate_time_vs_angle",
+    "plot_fidelity_vs_angle",
+    "create_optimization_summary",
 ]

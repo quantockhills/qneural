@@ -9,14 +9,12 @@ import torch
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from qneural.neural import (
     FeedForwardNN,
-    PhysicalPulseGenerator,
-    QuantumEvolver,
     create_default_physical_pulse_generator,
-    create_evolver
+    create_evolver,
 )
 from qneural.hardware.rydberg import RABI_DEFAULT
 
@@ -29,15 +27,14 @@ class TestNNtoODEConnection:
     def test_nn_generates_valid_output(self):
         """Test that NN produces valid output shape."""
         # Arrange
-        network = FeedForwardNN(input_dim=2, output_dim=2, hidden_layers=2, hidden_units=20)
+        network = FeedForwardNN(
+            input_dim=2, output_dim=2, hidden_layers=2, hidden_units=20
+        )
 
         # Create input: (angle, time) pairs for 201 time steps
         angle = torch.tensor([torch.pi / 2])
         time_grid = torch.linspace(0, 1, 201)
-        inputs = torch.stack([
-            angle.repeat(201),
-            time_grid
-        ], dim=1)  # [201, 2]
+        inputs = torch.stack([angle.repeat(201), time_grid], dim=1)  # [201, 2]
 
         # Act
         nn_output = network(inputs)
@@ -92,12 +89,16 @@ class TestNNtoODEConnection:
         eye = torch.eye(4, dtype=torch.cfloat)
         error = torch.norm(identity_test - eye)
 
-        assert error < 0.01, f"Evolution produced non-unitary result: ||U†U - I|| = {error}"
+        assert error < 0.01, (
+            f"Evolution produced non-unitary result: ||U†U - I|| = {error}"
+        )
 
     def test_full_nn_to_ode_pipeline(self):
         """Test complete pipeline: NN → Pulse → Hamiltonian → ODE → Unitary."""
         # Arrange
-        network = FeedForwardNN(input_dim=2, output_dim=2, hidden_layers=2, hidden_units=20)
+        network = FeedForwardNN(
+            input_dim=2, output_dim=2, hidden_layers=2, hidden_units=20
+        )
         pulse_gen = create_default_physical_pulse_generator(rabi_max=RABI_DEFAULT)
         evolver = create_evolver(nqubits=2)
 
@@ -126,17 +127,20 @@ class TestNNtoODEConnection:
         eye = torch.eye(4, dtype=torch.cfloat)
         unitarity_error = torch.norm(U_dag_U - eye)
 
-        assert unitarity_error < 0.01, \
+        assert unitarity_error < 0.01, (
             f"Full pipeline produced non-unitary: error = {unitarity_error}"
+        )
 
-        print(f"\n✓ Full NN→ODE pipeline test passed!")
+        print("\n✓ Full NN→ODE pipeline test passed!")
         print(f"  Final unitary shape: {final_unitary.shape}")
         print(f"  Unitarity error: {unitarity_error:.6e}")
 
     def test_gradients_flow_through_ode(self):
         """Test that gradients can flow back through the ODE solver (autodiff works)."""
         # Arrange
-        network = FeedForwardNN(input_dim=2, output_dim=2, hidden_layers=2, hidden_units=10)
+        network = FeedForwardNN(
+            input_dim=2, output_dim=2, hidden_layers=2, hidden_units=10
+        )
         pulse_gen = create_default_physical_pulse_generator(rabi_max=RABI_DEFAULT)
         evolver = create_evolver(nqubits=2)
 
@@ -161,6 +165,8 @@ class TestNNtoODEConnection:
 
         assert has_gradients, "Gradients didn't flow through ODE solver!"
 
-        print(f"\n✓ Autodiff through ODE works!")
+        print("\n✓ Autodiff through ODE works!")
         print(f"  Loss value: {loss.item():.6f}")
-        print(f"  Gradients computed: {sum(1 for p in network.parameters() if p.grad is not None)} parameters")
+        print(
+            f"  Gradients computed: {sum(1 for p in network.parameters() if p.grad is not None)} parameters"
+        )

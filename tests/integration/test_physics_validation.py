@@ -10,17 +10,16 @@ Tests that validate the quantum mechanics is implemented correctly:
 
 import pytest
 import torch
-import numpy as np
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from qneural.hardware.rydberg import (
     RydbergHamiltonian,
     constant_pulse,
     zero_pulse,
-    RABI_DEFAULT
+    RABI_DEFAULT,
 )
 from qneural.core import (
     basis_tensor,
@@ -38,16 +37,16 @@ class TestQuantumEvolution:
     def test_zero_hamiltonian_gives_no_evolution(self):
         """Zero Hamiltonian should leave state unchanged."""
         # Arrange
-        psi0 = basis_tensor('0', dim=3)
+        psi0 = basis_tensor("0", dim=3)
         ham = RydbergHamiltonian(
             nqubits=1,
             rabi_pulse=zero_pulse,
             detuning_pulse=zero_pulse,
-            addressing='global'
+            addressing="global",
         )
 
         # Act
-        result = schrodinger_evolution(psi0, ham, t_span=(0.0, 1.0), method='dopri5')
+        result = schrodinger_evolution(psi0, ham, t_span=(0.0, 1.0), method="dopri5")
         final_state = result[-1]
 
         # Assert - should be essentially unchanged
@@ -57,19 +56,16 @@ class TestQuantumEvolution:
     def test_evolution_preserves_norm(self):
         """Time evolution must preserve state normalization."""
         # Arrange - start in ground state
-        psi0 = basis_tensor('0', dim=3)
+        psi0 = basis_tensor("0", dim=3)
 
         # Create non-trivial Hamiltonian
         rabi = constant_pulse(RABI_DEFAULT)
         ham = RydbergHamiltonian(
-            nqubits=1,
-            rabi_pulse=rabi,
-            detuning_pulse=zero_pulse,
-            addressing='global'
+            nqubits=1, rabi_pulse=rabi, detuning_pulse=zero_pulse, addressing="global"
         )
 
         # Act - evolve for some time
-        result = schrodinger_evolution(psi0, ham, t_span=(0.0, 0.5), method='dopri5')
+        result = schrodinger_evolution(psi0, ham, t_span=(0.0, 0.5), method="dopri5")
 
         # Assert - norm should be 1 at all times
         for state in result:
@@ -83,11 +79,11 @@ class TestQuantumEvolution:
             nqubits=1,
             rabi_pulse=constant_pulse(RABI_DEFAULT),
             detuning_pulse=zero_pulse,
-            addressing='global'
+            addressing="global",
         )
 
         # Act - get time evolution operator
-        U = time_evolution_operator(ham, t_span=(0.0, 1.0), method='dopri5')
+        U = time_evolution_operator(ham, t_span=(0.0, 1.0), method="dopri5")
 
         # Assert - check unitarity
         identity = torch.matmul(U, U.conj().T)
@@ -99,25 +95,24 @@ class TestQuantumEvolution:
     def test_rabi_oscillation_period(self):
         """Full Rabi period should return state to initial (approximately)."""
         # Arrange - ground state
-        psi0 = basis_tensor('0', dim=3)
+        psi0 = basis_tensor("0", dim=3)
 
         # Rabi frequency Ω
         omega = 2.0 * torch.pi  # 1 Hz in angular units
         rabi = constant_pulse(omega)
         ham = RydbergHamiltonian(
-            nqubits=1,
-            rabi_pulse=rabi,
-            detuning_pulse=zero_pulse,
-            addressing='global'
+            nqubits=1, rabi_pulse=rabi, detuning_pulse=zero_pulse, addressing="global"
         )
 
         # Act - evolve for one full period (T = 2π/Ω = 1.0)
-        result = schrodinger_evolution(psi0, ham, t_span=(0.0, 1.0), method='dopri5')
+        result = schrodinger_evolution(psi0, ham, t_span=(0.0, 1.0), method="dopri5")
         final_state = result[-1]
 
         # Assert - should return close to initial state (up to global phase)
         overlap = torch.abs(torch.matmul(psi0.conj().T, final_state))
-        assert overlap > 0.95, f"Rabi oscillation didn't complete cycle: overlap = {overlap}"
+        assert overlap > 0.95, (
+            f"Rabi oscillation didn't complete cycle: overlap = {overlap}"
+        )
 
 
 class TestHamiltonianProperties:
@@ -130,7 +125,7 @@ class TestHamiltonianProperties:
             nqubits=2,
             rabi_pulse=constant_pulse(RABI_DEFAULT),
             detuning_pulse=constant_pulse(1.0),
-            addressing='global'
+            addressing="global",
         )
 
         # Act
@@ -150,16 +145,17 @@ class TestHamiltonianProperties:
                 nqubits=nqubits,
                 rabi_pulse=zero_pulse,
                 detuning_pulse=zero_pulse,
-                addressing='global'
+                addressing="global",
             )
 
             # Act
             H = ham(0.0)
 
             # Assert
-            expected_dim = 3 ** nqubits
-            assert H.shape == (expected_dim, expected_dim), \
+            expected_dim = 3**nqubits
+            assert H.shape == (expected_dim, expected_dim), (
                 f"{nqubits}-qubit Hamiltonian should be {expected_dim}×{expected_dim}"
+            )
 
     def test_interaction_term_for_multiqubit(self):
         """Two-qubit systems should have non-zero interaction."""
@@ -168,7 +164,7 @@ class TestHamiltonianProperties:
             nqubits=2,
             rabi_pulse=zero_pulse,
             detuning_pulse=zero_pulse,
-            addressing='global'
+            addressing="global",
             # Interaction is included by default in RydbergHamiltonian
         )
 
@@ -220,7 +216,7 @@ class TestGateConstruction:
     def test_czphi_is_unitary(self):
         """CZ_φ gates must be unitary."""
         # Test at several angles
-        for phi in [0.0, torch.pi/4, torch.pi/2, torch.pi]:
+        for phi in [0.0, torch.pi / 4, torch.pi / 2, torch.pi]:
             # Arrange & Act
             gate = czphi_gate(phi)
 
@@ -230,7 +226,9 @@ class TestGateConstruction:
             error = torch.norm(identity - eye)
 
             # Assert
-            assert error < 1e-5, f"CZ_{phi/torch.pi:.2f}π not unitary: error = {error}"
+            assert error < 1e-5, (
+                f"CZ_{phi / torch.pi:.2f}π not unitary: error = {error}"
+            )
 
     def test_cczphi_has_correct_dimension(self):
         """CCZ_φ (3-qubit) should be 8×8."""
@@ -263,13 +261,15 @@ class TestGateConstruction:
 
         # First 7 elements should be 1
         for i in range(7):
-            assert torch.abs(diagonal[i] - 1.0) < 1e-6, \
+            assert torch.abs(diagonal[i] - 1.0) < 1e-6, (
                 f"Element {i} should be 1, got {diagonal[i]}"
+            )
 
         # Last element should have phase φ
         expected_phase = torch.exp(torch.tensor(1.0j) * phi)
-        assert torch.abs(diagonal[7] - expected_phase) < 1e-6, \
+        assert torch.abs(diagonal[7] - expected_phase) < 1e-6, (
             f"Element 7 should be e^(i{phi}), got {diagonal[7]}"
+        )
 
 
 class TestJakschProtocol:
@@ -307,11 +307,13 @@ class TestJakschProtocol:
             nqubits=2,
             rabi_pulse=[rabi_control, rabi_target],  # Local addressing
             detuning_pulse=[zero_pulse, zero_pulse],
-            addressing='local'
+            addressing="local",
         )
 
         # Evolve for π pulse on control
-        U_after_step1 = time_evolution_operator(ham_step1, t_span=(0.0, float(t_pi)), method='dopri5')
+        U_after_step1 = time_evolution_operator(
+            ham_step1, t_span=(0.0, float(t_pi)), method="dopri5"
+        )
         U1 = torch.matmul(U_after_step1, U0)
 
         # Step 2: 2π pulse on target qubit (blocked if control is |r⟩)
@@ -319,14 +321,18 @@ class TestJakschProtocol:
             nqubits=2,
             rabi_pulse=[rabi_target, rabi_control],  # Reverse: target gets drive
             detuning_pulse=[zero_pulse, zero_pulse],
-            addressing='local'
+            addressing="local",
         )
 
-        U_after_step2 = time_evolution_operator(ham_step2, t_span=(0.0, float(t_2pi)), method='dopri5')
+        U_after_step2 = time_evolution_operator(
+            ham_step2, t_span=(0.0, float(t_2pi)), method="dopri5"
+        )
         U2 = torch.matmul(U_after_step2, U1)
 
         # Step 3: π pulse on control again (return to ground)
-        U_after_step3 = time_evolution_operator(ham_step1, t_span=(0.0, float(t_pi)), method='dopri5')
+        U_after_step3 = time_evolution_operator(
+            ham_step1, t_span=(0.0, float(t_pi)), method="dopri5"
+        )
         U_final = torch.matmul(U_after_step3, U2)
 
         # Extract computational subspace (indices without Rydberg state)
@@ -354,7 +360,9 @@ class TestJakschProtocol:
         off_diagonal = U_comp[off_diag_mask]
         off_diag_norm = torch.norm(off_diagonal)
 
-        assert off_diag_norm < 0.1, f"Gate should be diagonal, but ||off-diag|| = {off_diag_norm}"
+        assert off_diag_norm < 0.1, (
+            f"Gate should be diagonal, but ||off-diag|| = {off_diag_norm}"
+        )
 
         # Check diagonal elements are ±1
         diagonal = torch.diagonal(U_comp)
@@ -364,16 +372,19 @@ class TestJakschProtocol:
         for i, phase in enumerate(phases):
             is_zero = torch.abs(phase) < 0.2
             is_pi = torch.abs(torch.abs(phase) - torch.pi) < 0.2
-            assert is_zero or is_pi, f"Diagonal element {i} has unexpected phase {phase}"
+            assert is_zero or is_pi, (
+                f"Diagonal element {i} has unexpected phase {phase}"
+            )
 
         # Count how many are -1 (phase ≈ π)
         n_negative = torch.sum(torch.abs(torch.abs(phases) - torch.pi) < 0.2).item()
 
         # Should have exactly one -1 (or three -1s for the other convention)
-        assert n_negative == 1 or n_negative == 3, \
+        assert n_negative == 1 or n_negative == 3, (
             f"CZ gate should have 1 or 3 negative entries, found {n_negative}"
+        )
 
-        print(f"\n✓ Jaksch protocol test passed!")
+        print("\n✓ Jaksch protocol test passed!")
         print(f"  Diagonal elements: {diagonal}")
         print(f"  Phases: {phases}")
         print(f"  Number of -1 entries: {n_negative}")
@@ -382,7 +393,9 @@ class TestJakschProtocol:
 class TestBellStateGeneration:
     """Test that we can create entangled states (integration of evolution + gates)."""
 
-    @pytest.mark.skip(reason="Requires optimized pulses from training - this is an aspirational test")
+    @pytest.mark.skip(
+        reason="Requires optimized pulses from training - this is an aspirational test"
+    )
     def test_can_create_maximally_entangled_state(self):
         """Test that evolution can create entangled states.
 
@@ -390,7 +403,7 @@ class TestBellStateGeneration:
         optimized pulses from training.
         """
         # Arrange - start in |00⟩
-        psi0 = basis_tensor('00', dim=3)
+        psi0 = basis_tensor("00", dim=3)
 
         # Create a simple entangling Hamiltonian
         # (This won't create a perfect Bell state without optimization,
@@ -398,14 +411,11 @@ class TestBellStateGeneration:
         rabi = constant_pulse(RABI_DEFAULT / 2)
         detuning = constant_pulse(0.0)
         ham = RydbergHamiltonian(
-            nqubits=2,
-            rabi_pulse=rabi,
-            detuning_pulse=detuning,
-            addressing='global'
+            nqubits=2, rabi_pulse=rabi, detuning_pulse=detuning, addressing="global"
         )
 
         # Act - evolve for some time
-        result = schrodinger_evolution(psi0, ham, t_span=(0.0, 1.0), method='dopri5')
+        result = schrodinger_evolution(psi0, ham, t_span=(0.0, 1.0), method="dopri5")
         final_state = result[-1]
 
         # Assert - final state should not be separable (basic entanglement check)
@@ -413,8 +423,9 @@ class TestBellStateGeneration:
         overlap_with_initial = torch.abs(torch.matmul(psi0.conj().T, final_state))
 
         # Should have evolved away from initial state
-        assert overlap_with_initial < 0.99, \
+        assert overlap_with_initial < 0.99, (
             f"State didn't evolve: overlap = {overlap_with_initial}"
+        )
 
 
 class TestFidelityMetrics:
@@ -429,8 +440,9 @@ class TestFidelityMetrics:
         fidelity = unitary_fidelity(U, U, nqubits=2)
 
         # Assert
-        assert torch.abs(fidelity - 1.0) < 1e-6, \
+        assert torch.abs(fidelity - 1.0) < 1e-6, (
             f"Fidelity of identical gates should be 1, got {fidelity}"
+        )
 
     def test_fidelity_is_bounded(self):
         """Fidelity must be between 0 and 1."""
@@ -442,8 +454,7 @@ class TestFidelityMetrics:
         fidelity = unitary_fidelity(U1, U2, nqubits=2)
 
         # Assert
-        assert 0.0 <= fidelity <= 1.0, \
-            f"Fidelity must be in [0,1], got {fidelity}"
+        assert 0.0 <= fidelity <= 1.0, f"Fidelity must be in [0,1], got {fidelity}"
 
     def test_fidelity_is_symmetric(self):
         """Fidelity should be symmetric: F(U1, U2) = F(U2, U1)."""
@@ -456,8 +467,9 @@ class TestFidelityMetrics:
         fidelity_21 = unitary_fidelity(U2, U1, nqubits=2)
 
         # Assert
-        assert torch.abs(fidelity_12 - fidelity_21) < 1e-6, \
+        assert torch.abs(fidelity_12 - fidelity_21) < 1e-6, (
             "Fidelity should be symmetric"
+        )
 
 
 # Mark for slow tests is registered in pytest configuration

@@ -90,46 +90,40 @@ from .trainer import (
 
 __all__ = [
     # Models
-    'FeedForwardNN',
-    'PulseGenerator',
-    
+    "FeedForwardNN",
+    "PulseGenerator",
     # Time-optimal control
-    'TimeOptimalController',
-    'TimeOptimalTrainer',
-    
+    "TimeOptimalController",
+    "TimeOptimalTrainer",
     # Losses
-    'QuantumLoss',
-    'InfidelityLoss',
-    'TimePenaltyLoss',
-    'RobustnessLoss',
-    'ResourceLoss',
-    'CompositeLoss',
-    'create_infidelity_loss',
-    'create_time_optimal_loss',
-    
+    "QuantumLoss",
+    "InfidelityLoss",
+    "TimePenaltyLoss",
+    "RobustnessLoss",
+    "ResourceLoss",
+    "CompositeLoss",
+    "create_infidelity_loss",
+    "create_time_optimal_loss",
     # Solvers
-    'ODESolver',
-    'TorchDiffeqSolver',
-    'FixedStepSolver',
-    'DiffraxSolver',
-    'create_solver',
-    'solve_ivp',
-    
+    "ODESolver",
+    "TorchDiffeqSolver",
+    "FixedStepSolver",
+    "DiffraxSolver",
+    "create_solver",
+    "solve_ivp",
     # Pulse generation
-    'PhysicalPulseGenerator',
-    'TimeOptimalPulseGenerator',
-    'BatchedPulseGenerator',
-    'create_default_physical_pulse_generator',
-    'pulses_to_hamiltonian',
-    
+    "PhysicalPulseGenerator",
+    "TimeOptimalPulseGenerator",
+    "BatchedPulseGenerator",
+    "create_default_physical_pulse_generator",
+    "pulses_to_hamiltonian",
     # Evolution
-    'QuantumEvolver',
-    'BatchedQuantumEvolver',
-    'create_evolver',
-    'quick_evolve',
-    
+    "QuantumEvolver",
+    "BatchedQuantumEvolver",
+    "create_evolver",
+    "quick_evolve",
     # Training
-    'QuantumTrainer',
-    'FixedRabiTrainer',
-    'create_trainer',
+    "QuantumTrainer",
+    "FixedRabiTrainer",
+    "create_trainer",
 ]

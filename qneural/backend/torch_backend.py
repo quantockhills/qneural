@@ -5,7 +5,7 @@ Provides PyTorch-based implementations of all backend operations.
 """
 
 import torch
-from typing import Optional, Union, List
+from typing import Optional
 from ..config import DEVICE, DTYPE_REAL, DTYPE_COMPLEX
 
 
@@ -54,7 +54,9 @@ class TorchBackend:
     def tensor(self, data, dtype=None, device=None, requires_grad=False):
         """Create a tensor from data."""
         device = device or self.device
-        return torch.tensor(data, dtype=dtype, device=device, requires_grad=requires_grad)
+        return torch.tensor(
+            data, dtype=dtype, device=device, requires_grad=requires_grad
+        )
 
     def arange(self, *args, dtype=None, device=None):
         """Create a range tensor."""

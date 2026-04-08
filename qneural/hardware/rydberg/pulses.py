@@ -11,14 +11,17 @@ All functions support both single values and batch processing for neural network
 
 import torch
 from typing import Union, Callable, Optional
-from ...config import DEVICE, DTYPE_REAL, DTYPE_COMPLEX
+from ...config import DEVICE, DTYPE_REAL
 
 
 # =============================================================================
 # Base Pulse Functions
 # =============================================================================
 
-def zero_pulse(t: Union[float, torch.Tensor], device: Optional[str] = None) -> torch.Tensor:
+
+def zero_pulse(
+    t: Union[float, torch.Tensor], device: Optional[str] = None
+) -> torch.Tensor:
     """
     Zero pulse (no drive).
 
@@ -68,9 +71,7 @@ def constant_pulse(amplitude: float, device: Optional[str] = None) -> Callable:
 
 
 def piecewise_constant(
-    values: torch.Tensor,
-    total_time: float,
-    device: Optional[str] = None
+    values: torch.Tensor, total_time: float, device: Optional[str] = None
 ) -> Callable:
     """
     Create a piecewise-constant pulse from a list of values.
@@ -128,7 +129,7 @@ def piecewise_constant_nn_output(
     nn_output: torch.Tensor,
     gate_time: float,
     time_steps: int,
-    device: Optional[str] = None
+    device: Optional[str] = None,
 ) -> Callable:
     """
     Create a piecewise-constant pulse from neural network output.
@@ -180,10 +181,7 @@ def piecewise_constant_nn_output(
     return pulse_fn
 
 
-def create_simple_detuning_pulse(
-    values: torch.Tensor,
-    gate_time: float
-) -> Callable:
+def create_simple_detuning_pulse(values: torch.Tensor, gate_time: float) -> Callable:
     """
     Create a simple detuning pulse function for single-angle evolution.
 
@@ -210,10 +208,12 @@ def create_simple_detuning_pulse(
     >>> pulse(0.5)   # Returns 2.0 (middle value)
     >>> pulse(1.0)   # Returns 4.0 (last value)
     """
+
     def pulse_fn(t):
         idx = int(t / gate_time * (len(values) - 1))
         idx = min(idx, len(values) - 1)
         return values[idx]
+
     return pulse_fn
 
 
@@ -221,11 +221,9 @@ def create_simple_detuning_pulse(
 # Smooth Pulse Shapes
 # =============================================================================
 
+
 def gaussian_pulse(
-    amplitude: float,
-    center: float,
-    width: float,
-    device: Optional[str] = None
+    amplitude: float, center: float, width: float, device: Optional[str] = None
 ) -> Callable:
     """
     Create a Gaussian-shaped pulse.
@@ -260,15 +258,13 @@ def gaussian_pulse(
     def pulse_fn(t):
         if not isinstance(t, torch.Tensor):
             t = torch.tensor(t, dtype=DTYPE_REAL, device=device)
-        return amp * torch.exp(-((t - c) ** 2) / (2 * w ** 2))
+        return amp * torch.exp(-((t - c) ** 2) / (2 * w**2))
 
     return pulse_fn
 
 
 def blackman_pulse(
-    amplitude: float,
-    duration: float,
-    device: Optional[str] = None
+    amplitude: float, duration: float, device: Optional[str] = None
 ) -> Callable:
     """
     Create a Blackman window pulse (smooth start/end to reduce leakage).
@@ -300,9 +296,9 @@ def blackman_pulse(
     T = torch.tensor(duration, dtype=DTYPE_REAL, device=device)
 
     # Blackman coefficients
-    a0 = 7938/18608
-    a1 = 9240/18608
-    a2 = 1430/18608
+    a0 = 7938 / 18608
+    a1 = 9240 / 18608
+    a2 = 1430 / 18608
 
     def pulse_fn(t):
         if not isinstance(t, torch.Tensor):
@@ -312,7 +308,9 @@ def blackman_pulse(
         x = t / T
 
         # Blackman window
-        window = a0 - a1 * torch.cos(2 * torch.pi * x) + a2 * torch.cos(4 * torch.pi * x)
+        window = (
+            a0 - a1 * torch.cos(2 * torch.pi * x) + a2 * torch.cos(4 * torch.pi * x)
+        )
 
         # Zero outside [0, T]
         window = torch.where((t >= 0) & (t <= T), window, torch.zeros_like(window))
@@ -326,10 +324,9 @@ def blackman_pulse(
 # Composite Pulses
 # =============================================================================
 
+
 def cutoff_pulse(
-    pulse_fn: Callable,
-    cutoff_time: float,
-    device: Optional[str] = None
+    pulse_fn: Callable, cutoff_time: float, device: Optional[str] = None
 ) -> Callable:
     """
     Create a pulse that is active only up to a cutoff time.
@@ -384,6 +381,7 @@ def add_pulses(*pulse_fns: Callable) -> Callable:
     >>> pulse2 = gaussian_pulse(0.5, 0.5, 0.1)
     >>> combined = add_pulses(pulse1, pulse2)
     """
+
     def summed_fn(t):
         result = None
         for fn in pulse_fns:
@@ -401,7 +399,10 @@ def add_pulses(*pulse_fns: Callable) -> Callable:
 # Utility Functions
 # =============================================================================
 
-def pulse_area(pulse_fn: Callable, t_start: float, t_end: float, n_points: int = 1000) -> torch.Tensor:
+
+def pulse_area(
+    pulse_fn: Callable, t_start: float, t_end: float, n_points: int = 1000
+) -> torch.Tensor:
     """
     Compute the area (integral) of a pulse over a time interval.
 
@@ -427,7 +428,9 @@ def pulse_area(pulse_fn: Callable, t_start: float, t_end: float, n_points: int =
     return torch.trapz(values, t)
 
 
-def normalize_pulse(pulse_fn: Callable, target_area: float, t_start: float, t_end: float) -> Callable:
+def normalize_pulse(
+    pulse_fn: Callable, target_area: float, t_start: float, t_end: float
+) -> Callable:
     """
     Normalize a pulse to have a specific area.
 

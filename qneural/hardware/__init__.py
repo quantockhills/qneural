@@ -16,4 +16,4 @@ Each hardware platform is implemented as a submodule with its own:
 
 from . import rydberg
 
-__all__ = ['rydberg']
+__all__ = ["rydberg"]

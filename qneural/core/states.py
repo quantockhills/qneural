@@ -31,7 +31,7 @@ def number_to_base(n, base):
         String representation in the given base, with '2' replaced by 'r' for Rydberg states
     """
     if n == 0:
-        return '0'
+        return "0"
 
     digits = []
     while n:
@@ -39,10 +39,10 @@ def number_to_base(n, base):
         n //= base
 
     # Build string, replacing 2 with 'r' for Rydberg notation
-    str_rep = ''
+    str_rep = ""
     for i in digits[::-1]:
         if i == 2:
-            str_rep += 'r'
+            str_rep += "r"
         else:
             str_rep += str(i)
 
@@ -78,14 +78,14 @@ def basis_tensor(state_str, dim=3, device=None):
     """
     device = device or DEVICE
     n_qudits = len(state_str)
-    hilbert_dim = dim ** n_qudits
+    hilbert_dim = dim**n_qudits
 
     # Create zero state
     state = backend.zeros((hilbert_dim, 1), dtype=DTYPE_COMPLEX, device=device)
 
     # Convert state string to index
     # Replace 'r' with '2' for numerical conversion
-    state_numeric = state_str.replace('r', '2')
+    state_numeric = state_str.replace("r", "2")
     index = int(state_numeric, dim)
 
     state[index, 0] = 1.0
@@ -162,7 +162,7 @@ def basis_states_output(wavefunction):
 
         # Pad with zeros on the right if necessary
         while len(basis_str) < int(n_qudits):
-            basis_str += '0'
+            basis_str += "0"
 
         entry = [amplitude_val, basis_str]
 
@@ -175,7 +175,7 @@ def basis_states_output(wavefunction):
     return main_list
 
 
-def reduce_to_computational_basis(unitary, excluded_state='2', dim=3):
+def reduce_to_computational_basis(unitary, excluded_state="2", dim=3):
     """
     Reduce a unitary matrix by excluding states containing a specific level.
 

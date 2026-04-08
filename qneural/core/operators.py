@@ -8,13 +8,13 @@ Standard operators used across quantum computing platforms:
 """
 
 import torch
-from ..backend import backend
 from ..config import DTYPE_COMPLEX, DEVICE
 
 
 # =============================================================================
 # Pauli Matrices
 # =============================================================================
+
 
 def pauli_matrices(device=None):
     """
@@ -38,25 +38,21 @@ def pauli_matrices(device=None):
     sigma_z = torch.tensor([[1, 0], [0, -1]], dtype=DTYPE_COMPLEX, device=device)
     identity = torch.eye(2, dtype=DTYPE_COMPLEX, device=device)
 
-    return {
-        'X': sigma_x,
-        'Y': sigma_y,
-        'Z': sigma_z,
-        'I': identity
-    }
+    return {"X": sigma_x, "Y": sigma_y, "Z": sigma_z, "I": identity}
 
 
 # Pre-defined Pauli matrices for convenience
 _paulis = pauli_matrices()
-SIGMA_X = _paulis['X']
-SIGMA_Y = _paulis['Y']
-SIGMA_Z = _paulis['Z']
-IDENTITY_2 = _paulis['I']
+SIGMA_X = _paulis["X"]
+SIGMA_Y = _paulis["Y"]
+SIGMA_Z = _paulis["Z"]
+IDENTITY_2 = _paulis["I"]
 
 
 # =============================================================================
 # Single-Qubit Rotations
 # =============================================================================
+
 
 def rotation_x(theta, device=None):
     """
@@ -155,6 +151,7 @@ def arbitrary_rotation(alpha_x, alpha_y, alpha_z, device=None):
 # =============================================================================
 # Projection Operators
 # =============================================================================
+
 
 def projector(state_index, dim=2, device=None):
     """

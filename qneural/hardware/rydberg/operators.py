@@ -109,6 +109,7 @@ def create_projection_operator(state_index, dim=HILBERT_DIM_GG, device=None):
 # Standard Rydberg Operators (GG-qubit encoding)
 # =============================================================================
 
+
 def create_rydberg_operators(dim=HILBERT_DIM_GG, device=None):
     """
     Create standard operators for Rydberg systems.
@@ -145,25 +146,25 @@ def create_rydberg_operators(dim=HILBERT_DIM_GG, device=None):
         ket_1_bra_r = create_transition_operator(2, 1, dim, device)  # |1⟩⟨r|
 
         # Rabi coupling: (|1⟩⟨r| + |r⟩⟨1|)
-        operators['rabi'] = ket_r_bra_1 + ket_1_bra_r
+        operators["rabi"] = ket_r_bra_1 + ket_1_bra_r
 
         # Detuning: |r⟩⟨r|
-        operators['detuning'] = create_projection_operator(2, dim, device)
+        operators["detuning"] = create_projection_operator(2, dim, device)
 
         # Auxiliary projectors
-        operators['n_0'] = create_projection_operator(0, dim, device)
-        operators['n_1'] = create_projection_operator(1, dim, device)
-        operators['n_r'] = operators['detuning']  # Alias
+        operators["n_0"] = create_projection_operator(0, dim, device)
+        operators["n_1"] = create_projection_operator(1, dim, device)
+        operators["n_r"] = operators["detuning"]  # Alias
 
     elif dim == 2:  # GR-qubit
         # For ground-Rydberg qubits: |0⟩ (ground), |1⟩ (Rydberg)
         ket_1_bra_0 = create_transition_operator(0, 1, dim, device)
         ket_0_bra_1 = create_transition_operator(1, 0, dim, device)
 
-        operators['rabi'] = ket_1_bra_0 + ket_0_bra_1
-        operators['detuning'] = create_projection_operator(1, dim, device)
-        operators['n_0'] = create_projection_operator(0, dim, device)
-        operators['n_1'] = create_projection_operator(1, dim, device)
+        operators["rabi"] = ket_1_bra_0 + ket_0_bra_1
+        operators["detuning"] = create_projection_operator(1, dim, device)
+        operators["n_0"] = create_projection_operator(0, dim, device)
+        operators["n_1"] = create_projection_operator(1, dim, device)
 
     else:
         raise ValueError(f"Unsupported Hilbert dimension: {dim}")
@@ -174,6 +175,7 @@ def create_rydberg_operators(dim=HILBERT_DIM_GG, device=None):
 # =============================================================================
 # Hyperfine Transition Operators (for GG-qubits with additional lasers)
 # =============================================================================
+
 
 def create_hyperfine_operators(phase=0.0, dim=HILBERT_DIM_GG, device=None):
     """
@@ -206,12 +208,12 @@ def create_hyperfine_operators(phase=0.0, dim=HILBERT_DIM_GG, device=None):
     ket_0_bra_1 = create_transition_operator(1, 0, dim, device)
     ket_1_bra_0 = create_transition_operator(0, 1, dim, device)
 
-    operators['rabi_hf'] = (
-        torch.exp(torch.tensor(-1j * phase)) * ket_0_bra_1 +
-        torch.exp(torch.tensor(1j * phase)) * ket_1_bra_0
+    operators["rabi_hf"] = (
+        torch.exp(torch.tensor(-1j * phase)) * ket_0_bra_1
+        + torch.exp(torch.tensor(1j * phase)) * ket_1_bra_0
     )
 
     # Detuning on |1⟩ state
-    operators['detuning_hf'] = create_projection_operator(1, dim, device)
+    operators["detuning_hf"] = create_projection_operator(1, dim, device)
 
     return operators

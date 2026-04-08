@@ -11,7 +11,7 @@ import time
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
 from qneural.gates.rydberg import CZPhiGate
 from qneural.neural import (
@@ -19,7 +19,7 @@ from qneural.neural import (
     create_default_physical_pulse_generator,
     create_evolver,
     QuantumTrainer,
-    InfidelityLoss
+    InfidelityLoss,
 )
 
 
@@ -27,18 +27,13 @@ from qneural.neural import (
 @pytest.mark.integration
 def test_rk4_vs_dopri5_speed():
     """Compare training speed with rk4 vs dopri5."""
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("ODE METHOD SPEED COMPARISON")
-    print("="*60)
+    print("=" * 60)
 
     # Setup
     gate = CZPhiGate()
-    network = FeedForwardNN(
-        input_dim=2,
-        output_dim=2,
-        hidden_layers=2,
-        hidden_units=10
-    )
+    network = FeedForwardNN(input_dim=2, output_dim=2, hidden_layers=2, hidden_units=10)
     pulse_gen = create_default_physical_pulse_generator(rabi_max=gate.rabi_max)
     loss_fn = InfidelityLoss(nqubits=2)
 
@@ -54,7 +49,7 @@ def test_rk4_vs_dopri5_speed():
         nqubits=2,
         loss_fn=loss_fn,
         pulse_generator=pulse_gen,
-        evolver=evolver_dopri5
+        evolver=evolver_dopri5,
     )
 
     start = time.time()
@@ -68,14 +63,11 @@ def test_rk4_vs_dopri5_speed():
     from qneural.core.solvers import TorchDiffeqSolver
 
     evolver_rk4 = create_evolver(nqubits=2)
-    evolver_rk4.solver = TorchDiffeqSolver(method='rk4')
+    evolver_rk4.solver = TorchDiffeqSolver(method="rk4")
 
     # Reset network weights to be fair
     network_rk4 = FeedForwardNN(
-        input_dim=2,
-        output_dim=2,
-        hidden_layers=2,
-        hidden_units=10
+        input_dim=2, output_dim=2, hidden_layers=2, hidden_units=10
     )
 
     trainer_rk4 = QuantumTrainer(
@@ -83,7 +75,7 @@ def test_rk4_vs_dopri5_speed():
         nqubits=2,
         loss_fn=loss_fn,
         pulse_generator=pulse_gen,
-        evolver=evolver_rk4
+        evolver=evolver_rk4,
     )
 
     start = time.time()
@@ -93,9 +85,9 @@ def test_rk4_vs_dopri5_speed():
     print(f"   Time with rk4:    {time_rk4:.2f}s")
 
     # Results
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("RESULTS")
-    print("="*60)
+    print("=" * 60)
     print(f"dopri5 time: {time_dopri5:.2f}s")
     print(f"rk4 time:    {time_rk4:.2f}s")
     print(f"Speedup:     {time_dopri5 / time_rk4:.1f}x")
@@ -106,4 +98,4 @@ def test_rk4_vs_dopri5_speed():
     else:
         print("⚠ No significant speed difference")
 
-    print("="*60)
+    print("=" * 60)

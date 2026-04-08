@@ -16,21 +16,18 @@ from ..core.metrics import unitary_infidelity, unitary_infidelity_batch
 class QuantumLoss(ABC, nn.Module):
     """
     Abstract base class for quantum control loss functions.
-    
+
     All loss functions should inherit from this class and implement
     the forward method.
     """
-    
+
     @abstractmethod
     def forward(
-        self,
-        achieved_unitary: torch.Tensor,
-        target_unitary: torch.Tensor,
-        **kwargs
+        self, achieved_unitary: torch.Tensor, target_unitary: torch.Tensor, **kwargs
     ) -> torch.Tensor:
         """
         Compute loss between achieved and target unitaries.
-        
+
         Parameters
         ----------
         achieved_unitary : torch.Tensor
@@ -39,7 +36,7 @@ class QuantumLoss(ABC, nn.Module):
             Target unitary to compare against, shape [d, d] or [batch, d, d]
         **kwargs
             Additional loss-specific arguments
-        
+
         Returns
         -------
         torch.Tensor
@@ -51,81 +48,74 @@ class QuantumLoss(ABC, nn.Module):
 class InfidelityLoss(QuantumLoss):
     """
     Gate infidelity loss.
-    
+
     Primary objective: minimize 1 - F where F is gate fidelity.
-    
+
     Parameters
     ----------
     nqubits : int
         Number of qubits (for computing fidelity)
-    
+
     Examples
     --------
     >>> loss_fn = InfidelityLoss(nqubits=2)
     >>> loss = loss_fn(achieved_U, target_U)
     """
-    
+
     def __init__(self, nqubits: int = 2):
         super().__init__()
         self.nqubits = nqubits
-    
+
     def forward(
-        self,
-        achieved_unitary: torch.Tensor,
-        target_unitary: torch.Tensor,
-        **kwargs
+        self, achieved_unitary: torch.Tensor, target_unitary: torch.Tensor, **kwargs
     ) -> torch.Tensor:
         """Compute infidelity loss."""
         if achieved_unitary.dim() == 2:
             # Single unitary
             return unitary_infidelity(
-                achieved_unitary,
-                target_unitary,
-                nqubits=self.nqubits
+                achieved_unitary, target_unitary, nqubits=self.nqubits
             )
         else:
             # Batch of unitaries
             return unitary_infidelity_batch(
-                achieved_unitary,
-                target_unitary,
-                nqubits=self.nqubits
+                achieved_unitary, target_unitary, nqubits=self.nqubits
             )
 
 
 class TimePenaltyLoss(QuantumLoss):
     """
     Time regularization loss for time-optimal control.
-    
+
     Penalizes long gate times to encourage time-optimal solutions.
-    
+
     Parameters
     ----------
     weight : float
         Weight factor for time penalty (default: 0.1)
     reference_time : float, optional
         Reference time for normalization. If None, uses mean.
-    
+
     Examples
     --------
     >>> loss_fn = TimePenaltyLoss(weight=0.1)
     >>> loss = loss_fn(achieved_U, target_U, gate_time=5.0)
     """
-    
+
     def __init__(self, weight: float = 0.1, reference_time: Optional[float] = None):
         super().__init__()
         self.weight = weight
         self.reference_time = reference_time
-    
+
     def forward(
         self,
         achieved_unitary: torch.Tensor,
         target_unitary: torch.Tensor,
         gate_time: Optional[torch.Tensor] = None,
-        **kwargs
+        **kwargs,
     ) -> torch.Tensor:
         """
         Compute time penalty loss.
-        
+
         Parameters
         ----------
         gate_time : torch.Tensor
@@ -133,17 +123,17 @@ class TimePenaltyLoss(QuantumLoss):
         """
         if gate_time is None:
             raise ValueError("TimePenaltyLoss requires 'gate_time' argument")
-        
+
         # Normalize by reference time if provided
         if self.reference_time is not None:
             normalized_time = gate_time / self.reference_time
         else:
             normalized_time = gate_time
-        
+
         # Mean over batch if batched
         if normalized_time.dim() > 0:
             normalized_time = normalized_time.mean()
-        
+
         return self.weight * normalized_time
 
 
@@ -169,18 +159,16 @@ class RobustnessLoss(QuantumLoss):
         super().__init__()
         self.noise_strength = noise_strength
         import warnings
+
         warnings.warn(
             "RobustnessLoss is not yet implemented in this beta release. "
             "This feature is planned for v1.0. The loss will return zero.",
             FutureWarning,
-            stacklevel=2
+            stacklevel=2,
         )
 
     def forward(
-        self,
-        achieved_unitary: torch.Tensor,
-        target_unitary: torch.Tensor,
-        **kwargs
+        self, achieved_unitary: torch.Tensor, target_unitary: torch.Tensor, **kwargs
     ) -> torch.Tensor:
         """
         Compute robustness loss (not yet implemented).
@@ -216,12 +204,13 @@ class ResourceLoss(QuantumLoss):
         super().__init__()
         self.weight = weight
         import warnings
+
         warnings.warn(
             "ResourceLoss has minimal implementation in this beta release. "
             "Only basic pulse amplitude penalization is available. "
             "Full resource optimization planned for v1.0.",
             FutureWarning,
-            stacklevel=2
+            stacklevel=2,
         )
 
     def forward(
@@ -229,7 +218,7 @@ class ResourceLoss(QuantumLoss):
         achieved_unitary: torch.Tensor,
         target_unitary: torch.Tensor,
         pulses: Optional[torch.Tensor] = None,
-        **kwargs
+        **kwargs,
     ) -> torch.Tensor:
         """
         Compute resource loss (minimal implementation).
@@ -250,21 +239,21 @@ class ResourceLoss(QuantumLoss):
             return torch.tensor(0.0, device=achieved_unitary.device)
 
         # Basic implementation: penalize high pulse amplitudes
-        return self.weight * torch.mean(pulses ** 2)
+        return self.weight * torch.mean(pulses**2)
 
 
 class CompositeLoss(QuantumLoss):
     """
     Combines multiple loss functions with configurable weights.
-    
+
     This is the main loss function for quantum control training,
     allowing flexible combination of objectives.
-    
+
     Parameters
     ----------
     losses : List[Tuple[QuantumLoss, float]]
         List of (loss_function, weight) tuples
-    
+
     Examples
     --------
     >>> # Standard time-optimal control
@@ -272,27 +261,24 @@ class CompositeLoss(QuantumLoss):
     ...     (InfidelityLoss(nqubits=2), 1.0),
     ...     (TimePenaltyLoss(weight=0.1), 0.1)
     ... ])
-    >>> 
+    >>>
     >>> # Infidelity-only training
     >>> loss_fn = CompositeLoss([
     ...     (InfidelityLoss(nqubits=2), 1.0)
     ... ])
     """
-    
+
     def __init__(self, losses: List[Tuple[QuantumLoss, float]]):
         super().__init__()
         self.losses = nn.ModuleList([loss for loss, _ in losses])
         self.weights = [weight for _, weight in losses]
-    
+
     def forward(
-        self,
-        achieved_unitary: torch.Tensor,
-        target_unitary: torch.Tensor,
-        **kwargs
+        self, achieved_unitary: torch.Tensor, target_unitary: torch.Tensor, **kwargs
     ) -> torch.Tensor:
         """
         Compute weighted sum of all loss components.
-        
+
         Parameters
         ----------
         achieved_unitary : torch.Tensor
@@ -302,46 +288,44 @@ class CompositeLoss(QuantumLoss):
         **kwargs
             Additional arguments passed to all loss functions
             (e.g., gate_time for TimePenaltyLoss)
-        
+
         Returns
         -------
         torch.Tensor
             Total weighted loss
         """
         total_loss = torch.tensor(0.0, device=achieved_unitary.device)
-        
+
         for loss_fn, weight in zip(self.losses, self.weights):
             component = loss_fn(achieved_unitary, target_unitary, **kwargs)
             total_loss += weight * component
-        
+
         return total_loss
-    
+
     def get_component_losses(
-        self,
-        achieved_unitary: torch.Tensor,
-        target_unitary: torch.Tensor,
-        **kwargs
+        self, achieved_unitary: torch.Tensor, target_unitary: torch.Tensor, **kwargs
     ) -> Dict[str, torch.Tensor]:
         """
         Get individual loss components for logging/analysis.
-        
+
         Returns
         -------
         Dict[str, torch.Tensor]
             Dictionary mapping loss names to values
         """
         component_losses = {}
-        
+
         for i, (loss_fn, weight) in enumerate(zip(self.losses, self.weights)):
             component = loss_fn(achieved_unitary, target_unitary, **kwargs)
             loss_name = f"loss_{i}_{loss_fn.__class__.__name__}"
             component_losses[loss_name] = component
             component_losses[loss_name + "_weighted"] = weight * component
-        
+
         return component_losses
 
 
 # Convenience factory functions
+
 
 def create_infidelity_loss(nqubits: int = 2) -> InfidelityLoss:
     """Create infidelity-only loss."""
@@ -352,11 +336,11 @@ def create_time_optimal_loss(
     nqubits: int = 2,
     infidelity_weight: float = 1.0,
     time_weight: float = 0.1,
-    reference_time: Optional[float] = None
+    reference_time: Optional[float] = None,
 ) -> CompositeLoss:
     """
     Create standard time-optimal control loss.
-    
+
     Parameters
     ----------
     nqubits : int
@@ -367,13 +351,18 @@ def create_time_optimal_loss(
         Weight for time penalty term
     reference_time : float, optional
         Reference time for normalization
-    
+
     Returns
     -------
     CompositeLoss
         Combined infidelity + time penalty loss
     """
-    return CompositeLoss([
-        (InfidelityLoss(nqubits=nqubits), infidelity_weight),
-        (TimePenaltyLoss(weight=time_weight, reference_time=reference_time), time_weight)
-    ])
+    return CompositeLoss(
+        [
+            (InfidelityLoss(nqubits=nqubits), infidelity_weight),
+            (
+                TimePenaltyLoss(weight=time_weight, reference_time=reference_time),
+                time_weight,
+            ),
+        ]
+    )
