@@ -1,0 +1,8 @@
+services:
+  qneural:
+    build: .
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./examples:/app/examples
+      - ./checkpoints:/app/checkpoints

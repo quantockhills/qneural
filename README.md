@@ -87,6 +87,20 @@ pip install -e ".[dev]"
 
 **Note**: This is a beta release. Install from source is currently the only distribution method. PyPI distribution planned for v1.0.
 
+### Using Docker
+
+A pre-configured Docker image is available with all dependencies and Jupyter Lab:
+
+```bash
+git clone https://github.com/quantockhills/qneural.git
+cd qneural
+docker compose up
+```
+
+Open **http://localhost:8888** in your browser. All notebooks are available in the `examples/` directory. Trained models saved to `checkpoints/` persist outside the container.
+
+To stop: `docker compose down`
+
 ### Quick Start
 
 See the `examples/` directory for complete Jupyter notebook tutorials:
