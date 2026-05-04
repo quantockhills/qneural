@@ -8,7 +8,7 @@ Functions for evaluating the quality of quantum gates:
     - Distance measures
 """
 
-import torch
+from ..backend import backend
 import numpy as np
 
 
@@ -39,17 +39,17 @@ def unitary_fidelity(U1, U2, dim=2, nqubits=1):
     ----------
     Pedersen et al., Phys. Rev. Lett. 129, 050507 (2022)
     """
-    if U1.dim() == 2:
+    if len(U1.shape) == 2:
         # Single pair
         hilbert_dim = dim**nqubits
-        overlap = torch.trace(torch.matmul(U1.conj().T, U2))
-        fidelity = torch.abs(overlap) ** 2 / (hilbert_dim**2)
+        overlap = backend.trace(backend.matmul(backend.conj(backend.transpose(U1, 0, 1)), U2))
+        fidelity = backend.abs(overlap) ** 2 / (hilbert_dim**2)
     else:
         # Batch - use original implementation
         hilbert_dim = dim**nqubits
-        c = torch.einsum("mij, nji -> mn", U1.mH, U2)
-        g = torch.einsum("mm ->", c**2)
-        fidelity = torch.abs(g) / (U1.shape[0] * hilbert_dim**2)
+        c = backend.einsum("mij, nji -> mn", backend.conj(backend.transpose(U1, 1, 2)), U2)
+        g = backend.einsum("mm ->", c**2)
+        fidelity = backend.abs(g) / (U1.shape[0] * hilbert_dim**2)
 
     return fidelity
 
@@ -79,13 +79,13 @@ def unitary_fidelity_batch(U1_batch, U2_batch, nqubits=1):
 
     # Batch matrix multiplication: U1†  U2
     # U1.conj().transpose(1, 2) gives batch of U1†
-    overlap_matrices = torch.bmm(U1_batch.conj().transpose(1, 2), U2_batch)
+    overlap_matrices = backend.bmm(backend.conj(backend.transpose(U1_batch, 1, 2)), U2_batch)
 
     # Trace of each matrix: einsum for batch trace
-    overlaps = torch.einsum("bii->b", overlap_matrices)
+    overlaps = backend.einsum("bii->b", overlap_matrices)
 
     # Fidelity for each: |Tr(U1† U2)|² / d²
-    fidelities = torch.abs(overlaps) ** 2 / (d**2)
+    fidelities = backend.abs(overlaps) ** 2 / (d**2)
 
     return fidelities
 
@@ -168,7 +168,7 @@ def unitary_infidelity_array(U1, U2, dim=2, nqubits=1):
     torch.Tensor
         Infidelity (scalar if single pair, vector if batch)
     """
-    if U1.dim() == 2:
+    if len(U1.shape) == 2:
         # Single unitary pair
         return unitary_infidelity(U1, U2, nqubits)
     else:
@@ -206,8 +206,8 @@ def process_fidelity(U1, U2):
     the literature but useful for some applications.
     """
     d = U1.shape[0]
-    overlap = torch.trace(torch.matmul(U1.conj().T, U2))
-    return torch.abs(overlap) ** 2 / d**2
+    overlap = backend.trace(backend.matmul(backend.conj(backend.transpose(U1, 0, 1)), U2))
+    return backend.abs(overlap) ** 2 / d**2
 
 
 # =============================================================================
@@ -240,7 +240,7 @@ def diamond_distance_estimate(U1, U2):
     This is a quick approximation for monitoring during optimization.
     """
     difference = U1 - U2
-    frobenius_norm = torch.norm(difference, p="fro")
+    frobenius_norm = backend.norm(difference, p="fro")
     return frobenius_norm / np.sqrt(2)  # Rough scaling
 
 

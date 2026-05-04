@@ -8,7 +8,7 @@ Functions for creating and analyzing quantum gates, including:
     - Basis reductions
 """
 
-import torch
+from ..backend import backend
 from ..config import DTYPE_COMPLEX, DEVICE
 
 
@@ -32,8 +32,8 @@ def cz_gate(device=None):
     Equivalent to CZ_φ with φ = π
     """
     device = device or DEVICE
-    cz = torch.eye(4, dtype=DTYPE_COMPLEX, device=device)
-    cz[3, 3] = -1.0
+    cz = backend.eye(4, dtype=DTYPE_COMPLEX, device=device)
+    cz = backend.index_set(cz, (3, 3), -1.0)
     return cz
 
 
@@ -59,11 +59,13 @@ def czphi_gate(phi, device=None):
     Acts as: |00⟩ → |00⟩, |01⟩ → |01⟩, |10⟩ → |10⟩, |11⟩ → e^{iφ}|11⟩
     """
     device = device or DEVICE
-    gate = torch.eye(4, dtype=DTYPE_COMPLEX, device=device)
-    # Convert phi to tensor if it's a scalar, then compute exp
-    if not isinstance(phi, torch.Tensor):
-        phi = torch.tensor(phi, dtype=torch.float32, device=device)
-    gate[3, 3] = torch.exp(torch.tensor(1.0j, device=device) * phi)
+    gate = backend.eye(4, dtype=DTYPE_COMPLEX, device=device)
+    if not hasattr(phi, 'shape'):
+        phi = backend.tensor(float(phi), device=device)
+    gate = backend.index_set(
+        gate, (3, 3),
+        backend.exp(backend.tensor(1.0j, device=device) * phi)
+    )
     return gate
 
 
@@ -95,7 +97,7 @@ def czp_gate_stack(phi_tensor, device=None):
     device = device or DEVICE
 
     # Ensure phi_tensor is 1D
-    if phi_tensor.dim() > 1:
+    if len(phi_tensor.shape) > 1:
         phi_tensor = phi_tensor.squeeze()
 
     batch_size = len(phi_tensor)
@@ -105,7 +107,7 @@ def czp_gate_stack(phi_tensor, device=None):
         gate = czphi_gate(phi, device)
         gates.append(gate)
 
-    return torch.stack(gates)
+    return backend.stack(gates)
 
 
 # =============================================================================
@@ -137,10 +139,13 @@ def cczphi_gate(phi, device=None):
     Acts on basis {|000⟩, |001⟩, |010⟩, |011⟩, |100⟩, |101⟩, |110⟩, |111⟩}
     """
     device = device or DEVICE
-    gate = torch.eye(8, dtype=DTYPE_COMPLEX, device=device)
-    if not isinstance(phi, torch.Tensor):
-        phi = torch.tensor(phi, dtype=torch.float32, device=device)
-    gate[-1, -1] = torch.exp(torch.tensor(1.0j, device=device) * phi)
+    gate = backend.eye(8, dtype=DTYPE_COMPLEX, device=device)
+    if not hasattr(phi, 'shape'):
+        phi = backend.tensor(float(phi), device=device)
+    gate = backend.index_set(
+        gate, (-1, -1),
+        backend.exp(backend.tensor(1.0j, device=device) * phi)
+    )
     return gate
 
 
@@ -169,10 +174,13 @@ def cczphi_gate_zzz(phi, device=None):
     Related to standard CCZ_φ by basis change.
     """
     device = device or DEVICE
-    gate = -1.0 * torch.eye(8, dtype=DTYPE_COMPLEX, device=device)
-    if not isinstance(phi, torch.Tensor):
-        phi = torch.tensor(phi, dtype=torch.float32, device=device)
-    gate[0, 0] = torch.exp(torch.tensor(1.0j, device=device) * phi)
+    gate = -1.0 * backend.eye(8, dtype=DTYPE_COMPLEX, device=device)
+    if not hasattr(phi, 'shape'):
+        phi = backend.tensor(float(phi), device=device)
+    gate = backend.index_set(
+        gate, (0, 0),
+        backend.exp(backend.tensor(1.0j, device=device) * phi)
+    )
     return gate
 
 
@@ -194,7 +202,7 @@ def cczp_gate_stack(phi_tensor, device=None):
     """
     device = device or DEVICE
 
-    if phi_tensor.dim() > 1:
+    if len(phi_tensor.shape) > 1:
         phi_tensor = phi_tensor.squeeze()
 
     batch_size = len(phi_tensor)
@@ -204,7 +212,7 @@ def cczp_gate_stack(phi_tensor, device=None):
         gate = cczphi_gate(phi, device)
         gates.append(gate)
 
-    return torch.stack(gates)
+    return backend.stack(gates)
 
 
 def cczp_gate_stack_zzz(phi_tensor, device=None):
@@ -225,7 +233,7 @@ def cczp_gate_stack_zzz(phi_tensor, device=None):
     """
     device = device or DEVICE
 
-    if phi_tensor.dim() > 1:
+    if len(phi_tensor.shape) > 1:
         phi_tensor = phi_tensor.squeeze()
 
     batch_size = len(phi_tensor)
@@ -235,7 +243,7 @@ def cczp_gate_stack_zzz(phi_tensor, device=None):
         gate = cczphi_gate_zzz(phi, device)
         gates.append(gate)
 
-    return torch.stack(gates)
+    return backend.stack(gates)
 
 
 # =============================================================================
@@ -274,10 +282,10 @@ def single_qubit_phase_correction(phi, nqubits=2, device=None):
     device = device or DEVICE
     dim = 2**nqubits
 
-    correction = torch.eye(dim, dtype=DTYPE_COMPLEX, device=device)
-    if not isinstance(phi, torch.Tensor):
-        phi = torch.tensor(phi, dtype=torch.float32, device=device)
-    phase_factor = torch.exp(torch.tensor(-1.0j, device=device) * phi)
+    correction = backend.eye(dim, dtype=DTYPE_COMPLEX, device=device)
+    if not hasattr(phi, 'shape'):
+        phi = backend.tensor(phi, device=device)
+    phase_factor = backend.exp(backend.tensor(-1.0j, device=device) * phi)
 
     # Apply phase correction based on number of |1⟩ states
     for idx in range(dim):
@@ -310,7 +318,7 @@ def single_qubit_phase_correction_batch(phi_batch, nqubits=2, device=None):
     batch_size = len(phi_batch)
     dim = 2**nqubits
 
-    corrections = torch.zeros(
+    corrections = backend.zeros(
         (batch_size, dim, dim), dtype=DTYPE_COMPLEX, device=device
     )
 

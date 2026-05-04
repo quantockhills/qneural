@@ -10,21 +10,33 @@ This module provides centralized configuration for:
 Users can override these settings at runtime or via environment variables.
 """
 
-import torch
 import os
 
 # =============================================================================
 # Backend Configuration
 # =============================================================================
 
-# Device selection: 'cpu', 'cuda', or 'mps'
-DEVICE = os.getenv("QNEURAL_DEVICE", "cpu")
+BACKEND = os.getenv("QNEURAL_BACKEND", "pytorch")
 
-# Default dtype for real-valued tensors
-DTYPE_REAL = torch.float32
+_device = os.getenv("QNEURAL_DEVICE", "cpu")
+DTYPE_REAL = None
+DTYPE_COMPLEX = None
 
-# Default dtype for complex-valued tensors
-DTYPE_COMPLEX = torch.cfloat
+if BACKEND == "pytorch":
+    import torch
+    DEVICE = _device
+    DTYPE_REAL = torch.float32
+    DTYPE_COMPLEX = torch.cfloat
+elif BACKEND == "tensorflow":
+    import tensorflow as tf
+    DEVICE = "cpu" if _device == "cpu" else f"/{_device}:0"
+    DTYPE_REAL = tf.float32
+    DTYPE_COMPLEX = tf.complex64
+elif BACKEND == "jax":
+    import jax.numpy as jnp
+    DEVICE = _device
+    DTYPE_REAL = jnp.float32
+    DTYPE_COMPLEX = jnp.complex64
 
 # =============================================================================
 # Numerical Defaults
@@ -68,49 +80,88 @@ HBAR = 1.054571817e-34  # J·s
 # =============================================================================
 
 
-def set_device(device: str):
+def set_backend(backend: str):
     """
-    Set the global device for computations.
+    Set the computational backend.
 
     Parameters
     ----------
-    device : str
-        Device identifier: 'cpu', 'cuda', or 'mps'
+    backend : str
+        Backend identifier: 'pytorch', 'tensorflow', or 'jax'
     """
-    global DEVICE
-    if device not in ["cpu", "cuda", "mps"]:
-        raise ValueError(f"Invalid device: {device}. Must be 'cpu', 'cuda', or 'mps'.")
-    DEVICE = device
+    global BACKEND, DEVICE, DTYPE_REAL, DTYPE_COMPLEX
+    if backend not in ["pytorch", "tensorflow", "jax"]:
+        raise ValueError(
+            f"Invalid backend: {backend}. Must be 'pytorch', 'tensorflow', or 'jax'."
+        )
+    BACKEND = backend
+    if backend == "pytorch":
+        import torch
+        DEVICE = "cpu"
+        DTYPE_REAL = torch.float32
+        DTYPE_COMPLEX = torch.cfloat
+    elif backend == "tensorflow":
+        import tensorflow as tf
+        DEVICE = "cpu"
+        DTYPE_REAL = tf.float32
+        DTYPE_COMPLEX = tf.complex64
+    elif backend == "jax":
+        import jax.numpy as jnp
+        DEVICE = "cpu"
+        DTYPE_REAL = jnp.float32
+        DTYPE_COMPLEX = jnp.complex64
+
+    from .backend import _reinit_backend
+    _reinit_backend()
+
+
+def set_device(device: str):
+    """Set the global device for computations."""
+    global _device, DEVICE
+    _device = device
+    if BACKEND == "tensorflow":
+        DEVICE = "cpu" if device == "cpu" else f"/{device}:0"
+    else:
+        DEVICE = device
 
 
 def get_device():
-    """
-    Get the current global device.
-
-    Returns
-    -------
-    str
-        Current device identifier
-    """
+    """Get the current global device."""
     return DEVICE
 
 
-def set_precision(precision: str):
-    """
-    Set numerical precision for the framework.
+def get_backend():
+    """Get the current computational backend."""
+    return BACKEND
 
-    Parameters
-    ----------
-    precision : str
-        Either 'single' (float32) or 'double' (float64)
-    """
+
+def set_precision(precision: str):
+    """Set numerical precision for the framework."""
     global DTYPE_REAL, DTYPE_COMPLEX
-    if precision == "single":
-        DTYPE_REAL = torch.float32
-        DTYPE_COMPLEX = torch.cfloat
-    elif precision == "double":
-        DTYPE_REAL = torch.float64
-        DTYPE_COMPLEX = torch.cdouble
+    if BACKEND == "pytorch":
+        import torch
+        if precision == "single":
+            DTYPE_REAL = torch.float32
+            DTYPE_COMPLEX = torch.cfloat
+        elif precision == "double":
+            DTYPE_REAL = torch.float64
+            DTYPE_COMPLEX = torch.cdouble
+    elif BACKEND == "tensorflow":
+        import tensorflow as tf
+        if precision == "single":
+            DTYPE_REAL = tf.float32
+            DTYPE_COMPLEX = tf.complex64
+        elif precision == "double":
+            DTYPE_REAL = tf.float64
+            DTYPE_COMPLEX = tf.complex128
+    elif BACKEND == "jax":
+        import jax.numpy as jnp
+        if precision == "single":
+            DTYPE_REAL = jnp.float32
+            DTYPE_COMPLEX = jnp.complex64
+        elif precision == "double":
+            DTYPE_REAL = jnp.float64
+            DTYPE_COMPLEX = jnp.complex128
     else:
         raise ValueError(
             f"Invalid precision: {precision}. Must be 'single' or 'double'."
@@ -127,6 +178,7 @@ def print_config():
     print("=" * 60)
     print("qneural Configuration")
     print("=" * 60)
+    print(f"Backend:             {BACKEND}")
     print(f"Device:              {DEVICE}")
     print(f"Real dtype:          {DTYPE_REAL}")
     print(f"Complex dtype:       {DTYPE_COMPLEX}")

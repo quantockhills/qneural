@@ -4,16 +4,14 @@ Physical constants for Rydberg atom systems.
 All frequencies are in angular units (rad/s or equivalently 2π × Hz).
 """
 
-import torch
 import numpy as np
+import math
 
 # =============================================================================
 # Rabi Frequencies
 # =============================================================================
 
-# Default maximum Rabi frequency for ground-Rydberg transitions
-# Units: 2π × 4 MHz (typical for experiments)
-RABI_DEFAULT = 2 * torch.pi * 4.0
+RABI_DEFAULT = 2 * math.pi * 4.0
 
 # Default Rabi frequency for ground-ground (hyperfine) transitions
 # Units: 2π × 4 kHz (much weaker than Rydberg coupling)

@@ -40,5 +40,25 @@ setup(
         "analysis": [
             "qutip",
         ],
+        "tensorflow": [
+            "tensorflow>=2.12",
+            "tfdiffeq>=0.1.0",
+        ],
+        "jax": [
+            "jax>=0.4.20,<0.10",
+            "jaxlib>=0.4.20,<0.10",
+            "diffrax>=0.5.0",
+            "equinox>=0.11.0",
+            "optax>=0.1.7",
+        ],
+        "all-backends": [
+            "tensorflow>=2.12",
+            "tfdiffeq>=0.1.0",
+            "jax>=0.4.20,<0.10",
+            "jaxlib>=0.4.20,<0.10",
+            "diffrax>=0.5.0",
+            "equinox>=0.11.0",
+            "optax>=0.1.7",
+        ],
     },
 )

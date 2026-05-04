@@ -180,6 +180,9 @@ class TorchBackend:
         """Add dimension."""
         return torch.unsqueeze(tensor, dim)
 
+    def expand(self, tensor, shape):
+        return tensor.expand(*shape)
+
     def squeeze(self, tensor, dim=None):
         """Remove dimension."""
         if dim is None:
@@ -223,8 +226,57 @@ class TorchBackend:
         return torch.randn(*shape, dtype=dtype, device=device)
 
     # =========================================================================
+    # Conditional and Clamping
+    # =========================================================================
+
+    def where(self, condition, x, y):
+        return torch.where(condition, x, y)
+
+    def floor(self, tensor):
+        return torch.floor(tensor)
+
+    def clamp(self, tensor, min_val, max_val):
+        return torch.clamp(tensor, min_val, max_val)
+
+    def zeros_like(self, tensor):
+        return torch.zeros_like(tensor)
+
+    # =========================================================================
+    # Integration
+    # =========================================================================
+
+    def trapz(self, y, x):
+        return torch.trapz(y, x)
+
+    # =========================================================================
+    # Type Conversion
+    # =========================================================================
+
+    def long(self, tensor):
+        return tensor.long()
+
+    def diag(self, tensor, diagonal=0):
+        return torch.diag(tensor, diagonal)
+
+    @property
+    def pi(self):
+        return torch.tensor(torch.pi, dtype=DTYPE_REAL)
+
+    # =========================================================================
     # Utilities
     # =========================================================================
+
+    def norm(self, tensor, p="fro"):
+        return torch.norm(tensor, p=p)
+
+    def is_complex(self, tensor):
+        return tensor.dtype.is_complex
+
+    def is_tensor(self, obj):
+        return torch.is_tensor(obj)
+
+    def no_grad_context(self):
+        return torch.no_grad()
 
     def to_numpy(self, tensor):
         """Convert to numpy array."""
@@ -246,3 +298,8 @@ class TorchBackend:
     def item(self, tensor):
         """Extract scalar value."""
         return tensor.item()
+
+    def index_set(self, tensor, indices, value):
+        """Set tensor at indices to value. Returns modified tensor."""
+        tensor[indices] = value
+        return tensor

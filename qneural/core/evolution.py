@@ -17,17 +17,12 @@ from ..backend import backend
 from ..config import DTYPE_COMPLEX
 
 
-# =============================================================================
-# Schrödinger Equation Solver
-# =============================================================================
-
-
-def _complex_to_real(z: torch.Tensor) -> torch.Tensor:
+def _complex_to_real(z):
     """Convert complex tensor to real representation [..., 2] with [real, imag]."""
     return torch.stack([z.real, z.imag], dim=-1)
 
 
-def _real_to_complex(y: torch.Tensor) -> torch.Tensor:
+def _real_to_complex(y):
     """Convert real representation [..., 2] back to complex tensor."""
     return torch.complex(y[..., 0], y[..., 1])
 
@@ -79,11 +74,11 @@ def schrodinger_evolution(
     >>> result = schrodinger_evolution(psi0, ham, (0.0, 1.0))
     """
     # Ensure initial state is complex
-    if not torch.is_complex(initial_state):
+    if not backend.is_complex(initial_state):
         initial_state = initial_state.to(dtype=DTYPE_COMPLEX)
 
     # Determine if we're doing batched evolution
-    is_batched = initial_state.dim() == 3 and initial_state.shape[0] != 1
+    is_batched = len(initial_state.shape) == 3 and initial_state.shape[0] != 1
 
     if is_batched:
         # Batched evolution
@@ -92,25 +87,24 @@ def schrodinger_evolution(
 
         # Flatten batch dimensions and convert to real representation
         # Shape: [batch_size, state_dim, 1] -> [batch_size * state_dim] (complex)
-        initial_flat = initial_state.reshape(batch_size * state_dim)
-        # Convert to real: [batch_size * state_dim, 2]
+        initial_flat = backend.reshape(initial_state, (batch_size * state_dim,))
         initial_real = _complex_to_real(initial_flat)
 
         def ode_func(t, y):
-            # y shape: [batch_size * state_dim, 2]
-            # Convert back to complex
-            y_complex = _real_to_complex(y)  # [batch_size * state_dim]
-            # Reshape to [batch_size, state_dim, 1]
-            y_reshaped = y_complex.reshape(batch_size, state_dim, 1)
+            y_complex = _real_to_complex(y)
+            y_reshaped = backend.reshape(y_complex, (batch_size, state_dim, 1))
 
             # Get Hamiltonian
             H = hamiltonian_fn(t)
-            if H.dim() == 2:
+            if len(H.shape) == 2:
                 # Same H for all batch elements
-                H = H.unsqueeze(0).expand(batch_size, -1, -1)
+                H = backend.expand(
+                    backend.unsqueeze(H, 0),
+                    (batch_size,) + tuple(H.shape)
+                )
 
             # Schrödinger equation: dψ/dt = -i H ψ
-            dydt_complex = -1.0j * torch.bmm(H, y_reshaped)
+            dydt_complex = -1.0j * backend.bmm(H, y_reshaped)
 
             # Flatten and convert to real
             dydt_flat = dydt_complex.reshape(batch_size * state_dim)
@@ -121,7 +115,7 @@ def schrodinger_evolution(
     else:
         # Single state evolution
         state_dim = initial_state.shape[0]
-        initial_flat = initial_state.reshape(-1)
+        initial_flat = backend.reshape(initial_state, (-1,))
         initial_real = _complex_to_real(initial_flat)
 
         def ode_func(t, y):
@@ -129,13 +123,13 @@ def schrodinger_evolution(
             # Convert to complex
             y_complex = _real_to_complex(y)  # [state_dim]
             # Reshape to [state_dim, 1]
-            y_reshaped = y_complex.reshape(state_dim, 1)
+            y_reshaped = backend.reshape(y_complex, (state_dim, 1))
 
             # Get Hamiltonian
             H = hamiltonian_fn(t)
 
             # Schrödinger equation: dψ/dt = -i H ψ
-            dydt_complex = -1.0j * torch.matmul(H, y_reshaped)
+            dydt_complex = -1.0j * backend.matmul(H, y_reshaped)
 
             # Flatten and convert to real
             dydt_flat = dydt_complex.reshape(-1)
@@ -145,7 +139,7 @@ def schrodinger_evolution(
 
     # Solve ODE
     if t_eval is None:
-        t_eval = torch.linspace(t_span[0], t_span[1], 2)
+        t_eval = backend.linspace(t_span[0], t_span[1], 2)
 
     solution_real = tde.odeint(
         ode_func, initial_real, t_eval, method=method, rtol=rtol, atol=atol, **kwargs
@@ -222,13 +216,13 @@ def evolve_unitary(
         H = hamiltonian_fn(t)
 
         # dU/dt = -i H U
-        dUdt = -1.0j * torch.matmul(H, U)
+        dUdt = -1.0j * backend.matmul(H, U)
 
         # Flatten back
         return dUdt.reshape(-1)
 
     if t_eval is None:
-        t_eval = torch.linspace(t_span[0], t_span[1], 2)
+        t_eval = backend.linspace(t_span[0], t_span[1], 2)
 
     solution = tde.odeint(ode_func, y0, t_eval, method=method, **kwargs)
 
@@ -308,14 +302,16 @@ def evolve_state(initial_state: torch.Tensor, unitary: torch.Tensor) -> torch.Te
     """
     if initial_state.dim() == 2 and unitary.dim() == 2:
         # Single state, single unitary
-        return torch.matmul(unitary, initial_state)
+        return backend.matmul(unitary, initial_state)
     elif initial_state.dim() == 3 and unitary.dim() == 3:
         # Batched
-        return torch.bmm(unitary, initial_state)
-    elif initial_state.dim() == 2 and unitary.dim() == 3:
-        # Single state, batched unitaries
-        return torch.bmm(
-            unitary, initial_state.unsqueeze(0).expand(unitary.shape[0], -1, -1)
+        return backend.bmm(unitary, initial_state)
+    elif len(initial_state.shape) == 2 and len(unitary.shape) == 3:
+        return backend.bmm(
+            unitary, backend.expand(
+                backend.unsqueeze(initial_state, 0),
+                (unitary.shape[0],) + tuple(initial_state.shape)
+            )
         )
     else:
         raise ValueError(

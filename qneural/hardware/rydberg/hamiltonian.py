@@ -9,7 +9,6 @@ Implements the Hamiltonian for Rydberg atom systems with:
 Supports both global and local addressing schemes.
 """
 
-import torch
 from typing import Callable, List, Optional, Union
 from itertools import combinations
 
@@ -106,7 +105,7 @@ class RydbergHamiltonian:
             # V_dd = coupling_constant * Rabi_max (see constants.VDD_COUPLING)
             self.vdd = VDD_COUPLING * RABI_DEFAULT
         else:
-            self.vdd = torch.tensor(vdd, dtype=DTYPE_REAL, device=self.device)
+            self.vdd = backend.tensor(vdd, dtype=DTYPE_REAL, device=self.device)
 
         # Validate and store pulse functions
         self._setup_pulses(rabi_pulse, detuning_pulse)
@@ -245,19 +244,19 @@ class RydbergHamiltonian:
         for i in range(self.nqubits):
             # Rabi term: (Ω(t)/2) * σ_x
             omega_t = self.rabi_pulses[i](t)
-            if isinstance(omega_t, torch.Tensor):
+            if hasattr(omega_t, 'to'):
                 omega_t = omega_t.to(dtype=DTYPE_REAL, device=self.device)
             else:
-                omega_t = torch.tensor(omega_t, dtype=DTYPE_REAL, device=self.device)
+                omega_t = backend.tensor(omega_t, dtype=DTYPE_REAL, device=self.device)
 
             H += 0.5 * omega_t * self.rabi_ops[i]
 
             # Detuning term: Δ(t) * n_r
             delta_t = self.detuning_pulses[i](t)
-            if isinstance(delta_t, torch.Tensor):
+            if hasattr(delta_t, 'to'):
                 delta_t = delta_t.to(dtype=DTYPE_REAL, device=self.device)
             else:
-                delta_t = torch.tensor(delta_t, dtype=DTYPE_REAL, device=self.device)
+                delta_t = backend.tensor(delta_t, dtype=DTYPE_REAL, device=self.device)
 
             H += delta_t * self.detuning_ops[i]
 
@@ -272,8 +271,10 @@ class RydbergHamiltonian:
 
         # Handle batching if requested
         if batch_size is not None:
-            # Expand for batch processing
-            H = H.unsqueeze(0).expand(batch_size, -1, -1)
+            H = backend.expand(
+                backend.unsqueeze(H, 0),
+                (batch_size,) + tuple(H.shape)
+            )
 
         return H
 
@@ -287,9 +288,9 @@ class RydbergHamiltonian:
         return (d, d)
 
     @property
-    def rabi_max(self) -> torch.Tensor:
+    def rabi_max(self):
         """Maximum Rabi frequency (for regularization)."""
-        return torch.tensor(RABI_DEFAULT, dtype=DTYPE_REAL, device=self.device)
+        return backend.tensor(RABI_DEFAULT, dtype=DTYPE_REAL, device=self.device)
 
 
 def create_constant_hamiltonian(

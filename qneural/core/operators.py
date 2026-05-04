@@ -7,7 +7,7 @@ Standard operators used across quantum computing platforms:
     - Projection operators
 """
 
-import torch
+from ..backend import backend
 from ..config import DTYPE_COMPLEX, DEVICE
 
 
@@ -33,10 +33,10 @@ def pauli_matrices(device=None):
     """
     device = device or DEVICE
 
-    sigma_x = torch.tensor([[0, 1], [1, 0]], dtype=DTYPE_COMPLEX, device=device)
-    sigma_y = torch.tensor([[0, -1j], [1j, 0]], dtype=DTYPE_COMPLEX, device=device)
-    sigma_z = torch.tensor([[1, 0], [0, -1]], dtype=DTYPE_COMPLEX, device=device)
-    identity = torch.eye(2, dtype=DTYPE_COMPLEX, device=device)
+    sigma_x = backend.tensor([[0, 1], [1, 0]], dtype=DTYPE_COMPLEX, device=device)
+    sigma_y = backend.tensor([[0, -1j], [1j, 0]], dtype=DTYPE_COMPLEX, device=device)
+    sigma_z = backend.tensor([[1, 0], [0, -1]], dtype=DTYPE_COMPLEX, device=device)
+    identity = backend.eye(2, dtype=DTYPE_COMPLEX, device=device)
 
     return {"X": sigma_x, "Y": sigma_y, "Z": sigma_z, "I": identity}
 
@@ -72,7 +72,7 @@ def rotation_x(theta, device=None):
     """
     device = device or DEVICE
     sigma_x = SIGMA_X.to(device)
-    return torch.matrix_exp(-0.5j * theta * sigma_x)
+    return backend.matrix_exp(-0.5j * theta * sigma_x)
 
 
 def rotation_y(theta, device=None):
@@ -93,7 +93,7 @@ def rotation_y(theta, device=None):
     """
     device = device or DEVICE
     sigma_y = SIGMA_Y.to(device)
-    return torch.matrix_exp(-0.5j * theta * sigma_y)
+    return backend.matrix_exp(-0.5j * theta * sigma_y)
 
 
 def rotation_z(theta, device=None):
@@ -114,7 +114,7 @@ def rotation_z(theta, device=None):
     """
     device = device or DEVICE
     sigma_z = SIGMA_Z.to(device)
-    return torch.matrix_exp(-0.5j * theta * sigma_z)
+    return backend.matrix_exp(-0.5j * theta * sigma_z)
 
 
 def arbitrary_rotation(alpha_x, alpha_y, alpha_z, device=None):
@@ -145,7 +145,7 @@ def arbitrary_rotation(alpha_x, alpha_y, alpha_z, device=None):
     R_y = rotation_y(alpha_y, device)
     R_z2 = rotation_z(alpha_z, device)
 
-    return torch.linalg.multi_dot([R_z2, R_y, R_z1])
+    return backend.matmul(backend.matmul(R_z2, R_y), R_z1)
 
 
 # =============================================================================
@@ -172,6 +172,6 @@ def projector(state_index, dim=2, device=None):
         Projection matrix
     """
     device = device or DEVICE
-    proj = torch.zeros((dim, dim), dtype=DTYPE_COMPLEX, device=device)
-    proj[state_index, state_index] = 1.0
+    proj = backend.zeros((dim, dim), dtype=DTYPE_COMPLEX, device=device)
+    proj = backend.index_set(proj, (state_index, state_index), 1.0)
     return proj

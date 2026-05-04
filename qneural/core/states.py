@@ -4,7 +4,6 @@ Quantum state manipulation (hardware-agnostic).
 Functions for creating and manipulating quantum states in arbitrary bases.
 """
 
-import torch
 import numpy as np
 import functools as ft
 from ..backend import backend
@@ -83,13 +82,9 @@ def basis_tensor(state_str, dim=3, device=None):
     # Create zero state
     state = backend.zeros((hilbert_dim, 1), dtype=DTYPE_COMPLEX, device=device)
 
-    # Convert state string to index
-    # Replace 'r' with '2' for numerical conversion
     state_numeric = state_str.replace("r", "2")
     index = int(state_numeric, dim)
-
-    state[index, 0] = 1.0
-
+    state = backend.index_set(state, (index, 0), 1.0)
     return state
 
 
@@ -115,7 +110,7 @@ def tensor_product(tensor_list):
     >>> ket_1 = basis_tensor('1', dim=3)
     >>> ket_01 = tensor_product([ket_0, ket_1])  # |0⟩⊗|1⟩
     """
-    return ft.reduce(torch.kron, tensor_list)
+    return ft.reduce(backend.kron, tensor_list)
 
 
 def basis_states_output(wavefunction):

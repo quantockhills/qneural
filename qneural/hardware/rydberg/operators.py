@@ -7,7 +7,6 @@ Defines the fundamental operators for Rydberg quantum computing:
     - Pauli-like operators for Rydberg transitions
 """
 
-import torch
 from ...backend import backend
 from ...config import DTYPE_COMPLEX, DEVICE
 from .constants import HILBERT_DIM_GG
@@ -33,7 +32,7 @@ def create_basis_ket(state_index, dim=HILBERT_DIM_GG, device=None):
     """
     device = device or DEVICE
     ket = backend.zeros((dim, 1), dtype=DTYPE_COMPLEX, device=device)
-    ket[state_index, 0] = 1.0
+    ket = backend.index_set(ket, (state_index, 0), 1.0)
     return ket
 
 
@@ -80,7 +79,7 @@ def create_transition_operator(from_state, to_state, dim=HILBERT_DIM_GG, device=
     """
     device = device or DEVICE
     operator = backend.zeros((dim, dim), dtype=DTYPE_COMPLEX, device=device)
-    operator[to_state, from_state] = 1.0
+    operator = backend.index_set(operator, (to_state, from_state), 1.0)
     return operator
 
 
@@ -209,8 +208,8 @@ def create_hyperfine_operators(phase=0.0, dim=HILBERT_DIM_GG, device=None):
     ket_1_bra_0 = create_transition_operator(0, 1, dim, device)
 
     operators["rabi_hf"] = (
-        torch.exp(torch.tensor(-1j * phase)) * ket_0_bra_1
-        + torch.exp(torch.tensor(1j * phase)) * ket_1_bra_0
+        backend.exp(backend.tensor(-1j * phase)) * ket_0_bra_1
+        + backend.exp(backend.tensor(1j * phase)) * ket_1_bra_0
     )
 
     # Detuning on |1⟩ state

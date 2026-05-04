@@ -9,8 +9,9 @@ This module provides time-dependent control functions used in quantum optimal co
 All functions support both single values and batch processing for neural network training.
 """
 
-import torch
+import math
 from typing import Union, Callable, Optional
+from ...backend import backend
 from ...config import DEVICE, DTYPE_REAL
 
 
@@ -37,7 +38,7 @@ def zero_pulse(
     torch.Tensor
         Scalar 0.0
     """
-    return torch.tensor(0.0, dtype=DTYPE_REAL, device=device or DEVICE)
+    return backend.tensor(0.0, dtype=DTYPE_REAL, device=device or DEVICE)
 
 
 def constant_pulse(amplitude: float, device: Optional[str] = None) -> Callable:
@@ -58,11 +59,11 @@ def constant_pulse(amplitude: float, device: Optional[str] = None) -> Callable:
 
     Examples
     --------
-    >>> pulse = constant_pulse(2.0 * torch.pi * 4)  # 4 MHz Rabi
+    >>> pulse = constant_pulse(2.0 * math.pi * 4)  # 4 MHz Rabi
     >>> pulse(0.0)  # Returns constant amplitude
     tensor(25.1327)
     """
-    val = torch.tensor(amplitude, dtype=DTYPE_REAL, device=device or DEVICE)
+    val = backend.tensor(amplitude, dtype=DTYPE_REAL, device=device or DEVICE)
 
     def pulse_fn(t):
         return val
@@ -92,7 +93,7 @@ def piecewise_constant(
 
     Examples
     --------
-    >>> values = torch.tensor([1.0, 2.0, 3.0])
+    >>> values = backend.tensor([1.0, 2.0, 3.0])
     >>> pulse = piecewise_constant(values, total_time=3.0)
     >>> pulse(0.5)  # Returns 1.0 (first segment)
     >>> pulse(1.5)  # Returns 2.0 (second segment)
@@ -102,21 +103,21 @@ def piecewise_constant(
 
     def pulse_fn(t):
         # Determine step index
-        if isinstance(t, torch.Tensor):
-            step_idx = torch.floor(t / step_size).long()
-            step_idx = torch.clamp(step_idx, 0, values.shape[-1] - 1)
+        if hasattr(t, 'shape'):
+            step_idx = backend.long(backend.floor(t / step_size))
+            step_idx = backend.clamp(step_idx, 0, values.shape[-1] - 1)
         else:
             step_idx = min(int(t // step_size), values.shape[-1] - 1)
 
-        if values.dim() == 1:
+        if len(values.shape) == 1:
             # Single values array
             return values[step_idx]
         else:
             # Batched values [batch, time_steps]
             batch_size = values.shape[0]
-            if isinstance(step_idx, torch.Tensor):
+            if hasattr(step_idx, 'shape'):
                 # Batched time - gather for each batch element
-                batch_indices = torch.arange(batch_size, device=device)
+                batch_indices = backend.arange(batch_size, device=device)
                 return values[batch_indices, step_idx]
             else:
                 # Scalar time - return value for this step from all batches
@@ -163,20 +164,20 @@ def piecewise_constant_nn_output(
     step_size = gate_time / time_steps
 
     # Ensure shape [batch, time_steps]
-    if nn_output.dim() == 1:
+    if len(nn_output.shape) == 1:
         batch_size = nn_output.shape[0] // time_steps
-        values = nn_output.reshape(batch_size, time_steps)
+        values = backend.reshape(nn_output, (batch_size, time_steps))
     else:
         values = nn_output
 
     def pulse_fn(t):
         # Determine time step
-        step_idx = torch.floor(torch.tensor(t / step_size)).long()
-        step_idx = torch.clamp(step_idx, 0, time_steps - 1)
+        step_idx = backend.floor(backend.tensor(t / step_size)).long()
+        step_idx = backend.clamp(step_idx, 0, time_steps - 1)
 
         # Gather values for each batch element at this time step
         batch_size = values.shape[0]
-        return values[:, step_idx].reshape(batch_size, 1)
+        return backend.reshape(values[:, step_idx], (batch_size, 1))
 
     return pulse_fn
 
@@ -202,7 +203,7 @@ def create_simple_detuning_pulse(values: torch.Tensor, gate_time: float) -> Call
 
     Examples
     --------
-    >>> detuning_vals = torch.tensor([1.0, 2.0, 3.0, 4.0])
+    >>> detuning_vals = backend.tensor([1.0, 2.0, 3.0, 4.0])
     >>> pulse = create_simple_detuning_pulse(detuning_vals, gate_time=1.0)
     >>> pulse(0.0)   # Returns 1.0 (first value)
     >>> pulse(0.5)   # Returns 2.0 (middle value)
@@ -251,14 +252,14 @@ def gaussian_pulse(
     tensor(1.0)
     """
     device = device or DEVICE
-    amp = torch.tensor(amplitude, dtype=DTYPE_REAL, device=device)
-    c = torch.tensor(center, dtype=DTYPE_REAL, device=device)
-    w = torch.tensor(width, dtype=DTYPE_REAL, device=device)
+    amp = backend.tensor(amplitude, dtype=DTYPE_REAL, device=device)
+    c = backend.tensor(center, dtype=DTYPE_REAL, device=device)
+    w = backend.tensor(width, dtype=DTYPE_REAL, device=device)
 
     def pulse_fn(t):
-        if not isinstance(t, torch.Tensor):
-            t = torch.tensor(t, dtype=DTYPE_REAL, device=device)
-        return amp * torch.exp(-((t - c) ** 2) / (2 * w**2))
+        if not hasattr(t, 'shape'):
+            t = backend.tensor(t, dtype=DTYPE_REAL, device=device)
+        return amp * backend.exp(-((t - c) ** 2) / (2 * w**2))
 
     return pulse_fn
 
@@ -292,8 +293,8 @@ def blackman_pulse(
     >>> pulse(0.5)  # Peak
     """
     device = device or DEVICE
-    amp = torch.tensor(amplitude, dtype=DTYPE_REAL, device=device)
-    T = torch.tensor(duration, dtype=DTYPE_REAL, device=device)
+    amp = backend.tensor(amplitude, dtype=DTYPE_REAL, device=device)
+    T = backend.tensor(duration, dtype=DTYPE_REAL, device=device)
 
     # Blackman coefficients
     a0 = 7938 / 18608
@@ -301,19 +302,19 @@ def blackman_pulse(
     a2 = 1430 / 18608
 
     def pulse_fn(t):
-        if not isinstance(t, torch.Tensor):
-            t = torch.tensor(t, dtype=DTYPE_REAL, device=device)
+        if not hasattr(t, 'shape'):
+            t = backend.tensor(t, dtype=DTYPE_REAL, device=device)
 
         # Normalized time [0, 1]
         x = t / T
 
         # Blackman window
         window = (
-            a0 - a1 * torch.cos(2 * torch.pi * x) + a2 * torch.cos(4 * torch.pi * x)
+            a0 - a1 * backend.cos(2 * math.pi * x) + a2 * backend.cos(4 * math.pi * x)
         )
 
         # Zero outside [0, T]
-        window = torch.where((t >= 0) & (t <= T), window, torch.zeros_like(window))
+        window = backend.where((t >= 0) & (t <= T), window, backend.zeros_like(window))
 
         return amp * window
 
@@ -345,18 +346,18 @@ def cutoff_pulse(
     Callable
         Modified pulse function that returns 0 for t > cutoff_time
     """
-    cutoff = torch.tensor(cutoff_time, dtype=DTYPE_REAL, device=device or DEVICE)
+    cutoff = backend.tensor(cutoff_time, dtype=DTYPE_REAL, device=device or DEVICE)
 
     def modified_fn(t):
-        if isinstance(t, torch.Tensor):
+        if hasattr(t, 'shape'):
             result = pulse_fn(t)
-            result = torch.where(t <= cutoff, result, torch.zeros_like(result))
+            result = backend.where(t <= cutoff, result, backend.zeros_like(result))
             return result
         else:
             if t <= cutoff_time:
                 return pulse_fn(t)
             else:
-                return torch.tensor(0.0, dtype=DTYPE_REAL, device=device or DEVICE)
+                return backend.tensor(0.0, dtype=DTYPE_REAL, device=device or DEVICE)
 
     return modified_fn
 
@@ -422,10 +423,10 @@ def pulse_area(
     torch.Tensor
         Pulse area (integral of pulse_fn from t_start to t_end)
     """
-    t = torch.linspace(t_start, t_end, n_points)
+    t = backend.linspace(t_start, t_end, n_points)
     dt = (t_end - t_start) / (n_points - 1)
-    values = torch.stack([pulse_fn(ti) for ti in t])
-    return torch.trapz(values, t)
+    values = backend.stack([pulse_fn(ti) for ti in t])
+    return backend.trapz(values, t)
 
 
 def normalize_pulse(
