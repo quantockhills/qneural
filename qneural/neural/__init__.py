@@ -30,41 +30,58 @@ Examples
 >>> history = trainer.train(angles, gate_time=5.0, epochs=1000)
 """
 
-# Neural network models
-from .models import (
-    FeedForwardNN,
-    PulseGenerator,
-)
+from ..config import BACKEND
 
-# Time-optimal control
-from .time_optimal import (
-    TimeOptimalController,
-    TimeOptimalTrainer,
-)
+if BACKEND == "jax":
+    from ._jax.models import FeedForwardNN, PulseGenerator
+    from ._jax.time_optimal import TimeOptimalController, TimeOptimalTrainer
+    from ._jax.losses import (
+        QuantumLoss,
+        InfidelityLoss,
+        TimePenaltyLoss,
+        RobustnessLoss,
+        ResourceLoss,
+        CompositeLoss,
+        create_infidelity_loss,
+        create_time_optimal_loss,
+    )
+    from ._jax.solvers import JaxOdeSolver
+    from ._jax.trainer import (
+        JaxQuantumTrainer as QuantumTrainer,
+        JaxFixedRabiTrainer as FixedRabiTrainer,
+        create_trainer,
+    )
+    ODESolver = JaxOdeSolver
+    TorchDiffeqSolver = JaxOdeSolver
+    FixedStepSolver = JaxOdeSolver
+    DiffraxSolver = JaxOdeSolver
+    create_solver = lambda method="dopri5", **kw: JaxOdeSolver(method=method, **kw)
+    solve_ivp = JaxOdeSolver(method="dopri5").solve
 
-# Loss functions
-from .losses import (
-    QuantumLoss,
-    InfidelityLoss,
-    TimePenaltyLoss,
-    RobustnessLoss,
-    ResourceLoss,
-    CompositeLoss,
-    create_infidelity_loss,
-    create_time_optimal_loss,
-)
+else:
+    from .models import FeedForwardNN, PulseGenerator
+    from .time_optimal import TimeOptimalController, TimeOptimalTrainer
+    from .losses import (
+        QuantumLoss,
+        InfidelityLoss,
+        TimePenaltyLoss,
+        RobustnessLoss,
+        ResourceLoss,
+        CompositeLoss,
+        create_infidelity_loss,
+        create_time_optimal_loss,
+    )
+    from .solvers import (
+        ODESolver,
+        TorchDiffeqSolver,
+        FixedStepSolver,
+        DiffraxSolver,
+        create_solver,
+        solve_ivp,
+    )
+    from .trainer import QuantumTrainer, FixedRabiTrainer, create_trainer
 
-# ODE solvers
-from .solvers import (
-    ODESolver,
-    TorchDiffeqSolver,
-    FixedStepSolver,
-    DiffraxSolver,
-    create_solver,
-    solve_ivp,
-)
-
-# Pulse generation
+# Pulse generation (backend-agnostic after Phase 2)
 from .pulse_generator import (
     PhysicalPulseGenerator,
     TimeOptimalPulseGenerator,
@@ -73,19 +90,12 @@ from .pulse_generator import (
     pulses_to_hamiltonian,
 )
 
-# Quantum evolution
+# Quantum evolution (backend-agnostic after Phase 2)
 from .evolution import (
     QuantumEvolver,
     BatchedQuantumEvolver,
     create_evolver,
     quick_evolve,
-)
-
-# Training
-from .trainer import (
-    QuantumTrainer,
-    FixedRabiTrainer,
-    create_trainer,
 )
 
 __all__ = [
