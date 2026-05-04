@@ -72,6 +72,7 @@ While initially focused on neural network-based pulse optimization for neutral a
 - torchdiffeq (for ODE integration)
 - matplotlib (for visualization)
 - qutip (optional, for verification)
+- JAX, equinox, diffrax, optax (optional, for JAX backend)
 
 ### Install from Source (Beta)
 
@@ -84,6 +85,16 @@ pip install -e .
 For development installation with testing dependencies:
 ```bash
 pip install -e ".[dev]"
+```
+
+For JAX backend support:
+```bash
+pip install -e ".[jax]"
+```
+
+To install with all optional backends:
+```bash
+pip install -e ".[all-backends]"
 ```
 
 **Note**: This is a beta release. Install from source is currently the only distribution method. PyPI distribution planned for v1.0.
