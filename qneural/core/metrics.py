@@ -8,6 +8,8 @@ Functions for evaluating the quality of quantum gates:
     - Distance measures
 """
 
+from __future__ import annotations
+
 from ..backend import backend
 import numpy as np
 

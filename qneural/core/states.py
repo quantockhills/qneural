@@ -4,6 +4,8 @@ Quantum state manipulation (hardware-agnostic).
 Functions for creating and manipulating quantum states in arbitrary bases.
 """
 
+from __future__ import annotations
+
 import numpy as np
 import functools as ft
 from ..backend import backend

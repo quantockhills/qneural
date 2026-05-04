@@ -9,6 +9,8 @@ Implements the Hamiltonian for Rydberg atom systems with:
 Supports both global and local addressing schemes.
 """
 
+from __future__ import annotations
+
 from typing import Callable, List, Optional, Union
 from itertools import combinations
 

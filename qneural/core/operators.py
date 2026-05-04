@@ -7,6 +7,8 @@ Standard operators used across quantum computing platforms:
     - Projection operators
 """
 
+from __future__ import annotations
+
 from ..backend import backend
 from ..config import DTYPE_COMPLEX, DEVICE
 

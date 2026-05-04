@@ -7,6 +7,8 @@ Defines the fundamental operators for Rydberg quantum computing:
     - Pauli-like operators for Rydberg transitions
 """
 
+from __future__ import annotations
+
 from ...backend import backend
 from ...config import DTYPE_COMPLEX, DEVICE
 from .constants import HILBERT_DIM_GG

@@ -8,6 +8,8 @@ Functions for creating and analyzing quantum gates, including:
     - Basis reductions
 """
 
+from __future__ import annotations
+
 from ..backend import backend
 from ..config import DTYPE_COMPLEX, DEVICE
 

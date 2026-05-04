@@ -9,6 +9,8 @@ This module provides time-dependent control functions used in quantum optimal co
 All functions support both single values and batch processing for neural network training.
 """
 
+from __future__ import annotations
+
 import math
 from typing import Union, Callable, Optional
 from ...backend import backend
