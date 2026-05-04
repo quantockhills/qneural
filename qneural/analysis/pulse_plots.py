@@ -6,7 +6,7 @@ and pulse comparisons.
 
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
+from ..backend import backend
 from typing import Optional, List, Dict, Callable
 
 
@@ -62,7 +62,7 @@ def plot_pulses_vs_time(
     pulse_values = []
     for pulse_fn in pulses:
         values = [
-            pulse_fn(t).item() if torch.is_tensor(pulse_fn(t)) else pulse_fn(t)
+            pulse_fn(t).item() if backend.is_tensor(pulse_fn(t)) else pulse_fn(t)
             for t in times
         ]
         pulse_values.append(np.array(values))
@@ -174,7 +174,7 @@ def plot_pulse_comparison(
     for idx, (label, pulses) in enumerate(pulse_dict.items()):
         pulse_fn = pulses[pulse_idx]
         values = [
-            pulse_fn(t).item() if torch.is_tensor(pulse_fn(t)) else pulse_fn(t)
+            pulse_fn(t).item() if backend.is_tensor(pulse_fn(t)) else pulse_fn(t)
             for t in times
         ]
         ax.plot(times, values, linewidth=2, label=label, color=colors[idx])

@@ -15,7 +15,7 @@ Designed to be flexible and work with both FixedRabiTrainer and TimeOptimalTrain
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
-import torch
+from ..backend import backend
 from typing import Optional, Dict, List, Union, Tuple
 from pathlib import Path
 
@@ -238,11 +238,11 @@ def plot_detuning_pulses(
     Examples
     --------
     >>> # Time-optimal CPHASE (gate_time parameter ignored)
-    >>> angles = torch.tensor([[0.4*np.pi], [0.5*np.pi], [0.6*np.pi]])
+    >>> angles = backend.tensor([[0.4*np.pi], [0.5*np.pi], [0.6*np.pi]])
     >>> plot_detuning_pulses(controller, angles, rabi_max=25.13)
 
     >>> # Fixed-time CZ with explicit gate time
-    >>> angle = torch.tensor([[np.pi]])
+    >>> angle = backend.tensor([[np.pi]])
     >>> plot_detuning_pulses(trainer, [angle], gate_time=0.304,
     ...                      rabi_max=25.13, n_time_steps=301)
 
@@ -252,11 +252,11 @@ def plot_detuning_pulses(
     ...                      figsize=(8, 6), rabi_max=25.13)
     """
     # Convert angles to tensor if needed
-    if not isinstance(angles, torch.Tensor):
-        angles = torch.tensor(angles)
+    if not hasattr(angles, 'shape'):
+        angles = backend.tensor(angles)
 
-    if angles.dim() == 1:
-        angles = angles.unsqueeze(-1)
+    if len(angles.shape) == 1:
+        angles = backend.unsqueeze(angles, -1)
 
     n_angles = len(angles)
 
@@ -275,7 +275,7 @@ def plot_detuning_pulses(
     # Detect controller type
     is_time_optimal = hasattr(controller, "time_predictor")
 
-    with torch.no_grad():
+    with backend.no_grad_context():
         if hasattr(controller, "eval"):
             controller.eval()
 
@@ -303,10 +303,10 @@ def plot_detuning_pulses(
                     n_time_steps = pulse_gen.n_time_steps
 
                     # Generate network inputs
-                    time_grid = torch.linspace(0, 1, n_time_steps)
+                    time_grid = backend.linspace(0, 1, n_time_steps)
                     angles_rep = angle_reshaped.repeat_interleave(n_time_steps)
                     time_rep = time_grid.repeat(len(angle_reshaped))
-                    inputs = torch.stack([angles_rep, time_rep], dim=1)
+                    inputs = backend.stack([angles_rep, time_rep], dim=1)
 
                     # Get detuning from network
                     detuning_out = network(inputs).reshape(n_time_steps)
@@ -326,7 +326,7 @@ def plot_detuning_pulses(
                 elif hasattr(controller, "forward"):
                     # It's a network directly
                     output = controller(angle_reshaped)
-                    detuning = output[:, :, 0] if output.dim() > 2 else output
+                    detuning = output[:, :, 0] if len(output.shape) > 2 else output
                     times = np.linspace(0, 1.0, n_time_steps)
                     time_label = ""
                 else:
@@ -335,7 +335,7 @@ def plot_detuning_pulses(
                     )
 
             # Plot
-            detuning_np = detuning.squeeze().cpu().numpy()
+            detuning_np = backend.to_numpy(backend.squeeze(detuning))
 
             # Create label for legend (if single_plot mode)
             if single_plot:
@@ -442,11 +442,11 @@ def plot_gate_time_vs_angle(
     ... )
     """
     # Generate test angles
-    test_angles = torch.linspace(angle_range[0], angle_range[1], n_angles).reshape(
+    test_angles = backend.linspace(angle_range[0], angle_range[1], n_angles).reshape(
         n_angles, 1
     )
 
-    with torch.no_grad():
+    with backend.no_grad_context():
         controller.eval()
         predicted_times, _ = controller(test_angles)
 
@@ -563,7 +563,7 @@ def plot_fidelity_vs_angle(
     ... )
     """
     # Generate evaluation angles
-    eval_angles = torch.linspace(angle_range[0], angle_range[1], n_angles)
+    eval_angles = backend.linspace(angle_range[0], angle_range[1], n_angles)
 
     print(f"Evaluating fidelity across {n_angles} angles...")
     eval_results = trainer.evaluate(eval_angles)
@@ -691,7 +691,7 @@ def create_optimization_summary(
 
     # 2. Detuning pulses
     print("📊 Generating detuning pulse plots...")
-    sample_angles = torch.linspace(angle_range[0], angle_range[1], n_sample_angles)
+    sample_angles = backend.linspace(angle_range[0], angle_range[1], n_sample_angles)
     save_path = f"{save_dir}/detuning_pulses.png" if save_dir else None
     fig2 = plot_detuning_pulses(
         controller, sample_angles, rabi_max=rabi_max, save_path=save_path, show=show
