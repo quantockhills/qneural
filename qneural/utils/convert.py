@@ -256,6 +256,67 @@ def convert_archival_to_new_format(
             sys.path.remove(archival_path)
 
 
+def _load_jax_model_wrapper(
+    model_path: str,
+    print_metadata: bool,
+    evaluate_fidelity: bool,
+    n_eval_angles: int,
+):
+    """Load a .jax checkpoint and return (controller, checkpoint)."""
+    import numpy as np
+    from ..neural._jax import load_jax_model
+    from ..neural._jax.time_optimal import TimeOptimalTrainer as JaxTrainer
+
+    controller, checkpoint = load_jax_model(model_path)
+    config = checkpoint['controller_config']
+    metadata = checkpoint['metadata']
+
+    if print_metadata:
+        print("Model Metadata:")
+        print("=" * 50)
+        for key, value in metadata.items():
+            if key == "note":
+                print(f"  {key}: {str(value)[:50]}...")
+            elif key == "angle_range" and isinstance(value, (list, tuple)) and len(value) == 2:
+                print(f"  {key}: [{value[0]/np.pi:.4f}\u03c0, {value[1]/np.pi:.4f}\u03c0]")
+            else:
+                print(f"  {key}: {value}")
+
+        print("\nController Configuration:")
+        print("=" * 50)
+        nqubits = metadata.get("nqubits", 2)
+        print(f"  Qubits: {nqubits}")
+        print(f"  Time network: {config['time_hidden_layers']} layers x {config['time_hidden_units']} units ({config['time_output_activation']})")
+        print(f"  Control network: {config['control_hidden_layers']} layers x {config['control_hidden_units']} units")
+        print(f"  Time bounds: [{config['time_bounds'][0]:.4f}, {config['time_bounds'][1]:.4f}] s")
+        print(f"  Rabi max: {config['rabi_max']:.2f} MHz")
+        print(f"  Time steps: {config['n_time_steps']}")
+        print(f"  Total parameters: sum of time + control network params")
+
+    if evaluate_fidelity and "angle_range" in metadata:
+        angle_range = metadata["angle_range"]
+        import jax.numpy as jnp
+        eval_angles = jnp.linspace(angle_range[0], angle_range[1], n_eval_angles)
+
+        trainer = JaxTrainer(
+            controller=controller,
+            nqubits=metadata.get("nqubits", 2),
+        )
+        print(f"\nEvaluating fidelity on {n_eval_angles} angles...")
+        results = trainer.evaluate(eval_angles)
+        fidelities = [(1 - inf) * 100 for inf in results.get("infidelities", [])]
+        if fidelities:
+            print(f"\nFidelity Statistics:")
+            print("=" * 50)
+            print(f"  Mean: {np.mean(fidelities):.4f}%")
+            print(f"  Min:  {np.min(fidelities):.4f}%")
+            print(f"  Max:  {np.max(fidelities):.4f}%")
+            print(f"  Std:  {np.std(fidelities):.4f}%")
+            print(f"  All > 99%: {all(f > 99 for f in fidelities)}")
+
+    return controller, checkpoint
+
+
 def load_saved_model(
     model_path: str,
     print_metadata: bool = True,
@@ -266,13 +327,12 @@ def load_saved_model(
     """
     Load a converted publication model and create controller.
 
-    This convenience function loads a .pt checkpoint file and creates
-    a fully configured TimeOptimalController with trained weights.
+    Supports both .pt (PyTorch) and .jax (JAX) checkpoint files.
 
     Parameters
     ----------
     model_path : str
-        Path to the .pt checkpoint file
+        Path to the .pt or .jax checkpoint file
     print_metadata : bool, default True
         Print model metadata and configuration
     evaluate_fidelity : bool, default True
@@ -298,7 +358,13 @@ def load_saved_model(
     """
     from ..neural.time_optimal import TimeOptimalController, TimeOptimalTrainer
 
-    # Load checkpoint
+    # Detect format from extension
+    if model_path.endswith('.jax'):
+        return _load_jax_model_wrapper(
+            model_path, print_metadata, evaluate_fidelity, n_eval_angles
+        )
+
+    # Load PyTorch checkpoint
     checkpoint = torch.load(model_path, map_location=device, weights_only=False)
     config = checkpoint["controller_config"]
     metadata = checkpoint["metadata"]
