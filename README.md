@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/license-Apache%202.0-green)
 ![Status](https://img.shields.io/badge/status-beta-yellow)
 
-> ⚠️ **BETA SOFTWARE**: This package is currently in beta (v0.5.0). While the core functionality is validated against published results, APIs may evolve before the stable 1.0 release. We welcome feedback and bug reports via [GitHub Issues](https://github.com/quantockhills/qneural/issues).
+> ⚠️ **BETA SOFTWARE**: This package is currently in beta (v0.6.0). While the core functionality is validated against published results, APIs may evolve before the stable 1.0 release. We welcome feedback and bug reports via [GitHub Issues](https://github.com/quantockhills/qneural/issues).
 
 
 
@@ -21,7 +21,7 @@ While initially focused on neural network-based pulse optimization for neutral a
 - **Hardware platforms**: Rydberg atoms (current), superconducting qubits (planned), trapped ions (planned)
 - **Optimization methods**: Neural networks (current), reinforcement learning (planned), gradient-free optimization (planned)
 - **Objectives**: Gate fidelity, time-optimality, robustness to noise, resource efficiency
-- **Computational backends**: PyTorch (current), JAX (planned)
+- **Computational backends**: PyTorch (current), JAX (current), TensorFlow (planned)
 
 ## Key Features
 
@@ -52,13 +52,14 @@ While initially focused on neural network-based pulse optimization for neutral a
 ### Known Limitations (Beta)
 
 - **Platform support**: Currently Rydberg atoms only; superconducting qubit and ion trap support planned
-- **Backend**: PyTorch only; JAX backend for improved performance planned for v1.0
+- **Backend**: JAX backend available (v0.6.0-beta); TensorFlow backend planned
 - **Incomplete features**: Some loss functions (robustness, resource optimization) not yet fully implemented
 - **Scalability**: Optimized for 2-3 qubit gates; larger systems under development
 
 ### Roadmap to v1.0
 
-- **v0.6**: JAX backend, additional loss functions, improved visualization tools
+- **v0.6**: JAX backend, multi-backend abstraction, improved visualization tools ✅ (released)
+- **v0.7**: TensorFlow backend, additional loss functions, pre-trained model hub
 - **v0.8**: Release candidate with comprehensive documentation and >85% test coverage
 - **v1.0**: Production release with PyPI distribution, CI/CD, and multi-platform support
 

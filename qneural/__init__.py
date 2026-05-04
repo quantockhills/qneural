@@ -23,7 +23,7 @@ Example use cases:
     - Transfer learning across hardware platforms
 """
 
-__version__ = "0.5.0-beta"
+__version__ = "0.6.0-beta"
 __authors__ = ["Madhav Mohan", "Julius de Hond"]
 
 # Backend selection

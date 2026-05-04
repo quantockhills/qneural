@@ -7,7 +7,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="qneural",
-    version="0.5.0-beta",
+    version="0.6.0-beta",
     author="Madhav Mohan, Julius de Hond",
     author_email="madhav.mohan@protonmail.com",
     description="Machine Learning for Quantum Control",
